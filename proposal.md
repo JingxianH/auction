@@ -10,7 +10,7 @@
 ## 2. Objective and Key Features
 
 ### 2.1 Objective
---
+Build a stateful auction platform that lets users create auctions and place bids, while showcasing core cloud concepts such as containerization, persistent data, Kubernetes orchestration, monitoring, and safe deployment. The system must keep auction and bid state correct during restarts, redeployments, and pod failures.
 
 ### 2.2 Core Technical Requirements (How we will meet them)
 
@@ -52,6 +52,7 @@ A major challenge is Kubernetes' steep learning curve, especially since it is in
 * **Local Development:** We will build the core functional backend APIs and test them locally using Docker Compose to ensure container compatibility.
 * **Cloud Provisioning:** Once tested, we will provision infrastructure on DigitalOcean (likely tiulizing their managed Kubernetes service) to simplify control plane management.
 * **Orchestration & HA:** We will deploy the application via Kubernetes, configuring replica sets for server failover and setting up database replication with automated backups.
+* **Suggestion: instead of setting up database replication, We will leverage DigitalOcean’s managed PostgreSQL service, which provides built-in replication and automated backups.**
 * **Automation:** Finally, we will implement a CI/CD pipeline using GitHub Actions to automatically build our Docker images, push them to a container registry, and deploy updates to the cluster.
 
 ## 5. AI Assistance Disclosure
