@@ -49,17 +49,16 @@ Docker will be used for containerization during local development, using Docker 
 
 Monitoring will be implemented using DigitalOcean’s built-in monitoring and Kubernetes health checks.
 We will aim for the following:
-- Expose a /health endpoint and configure Kubernetes liveness and readiness probes
-- Monitor CPU and memory usage of API pods
-- Configure alerts for abnormal restart rates
+- Expose a `/health` endpoint and configure Kubernetes liveness and readiness probes
+- Use DigitalOcean metrics for cluster and workload resource usage i.e. CPU and memory
+- Configure at least one alert, such as high CPU/memory or repeated pod restarts (abnormal restart rates)
 - Log key application events (auction creation, bid acceptance/rejection, auction finish) for debugging and demonstration purposes
 
   
 ### 2.3 Application Features
 #### User accounts
-- User registration and login
-- Password hashing
-- Basic authorization for placing bids
+- User registration and login with password hashing
+- Basic authorization for placing bids so actions map to a user
 
 #### Auction management
 - Create auctions with title, description, starting price, and end time
@@ -69,6 +68,7 @@ We will aim for the following:
 #### Concurrent Bidding
 - Place bids on active auctions
 - Reject bids not higher than the current highest bid or late bid
+- A bid is valid only if received before `end_time` and it becomes the new highest bid. The server timestamp is the source of truth.
 - Store bid history per auction
 - Ensure correctness in concurrency using PostgreSQL transactions and row-level locking so only one winning highest bid exists at any time
 
@@ -83,17 +83,20 @@ Implement a CI/CD pipeline that:
 
 #### Advanced Feature 2: Backup and Recovery
 - Leverage DigitalOcean Managed PostgreSQL to perform automated backups
-- Document a recovery procedure and perform a recovery test: restore the database to a backup state, reconnect the API to the restored instance, and verify auction/bid consistency including an integrity check that compares stored highest bid vs. `MAX(bids)` for each auction)
+- Document a recovery procedure and perform a recovery test
+  - Restore the database to a backup state, reconnect the API to the restored instance, and verify auction/bid consistency
+  - Include an integrity check that compares stored highest bid vs. MAX(bids) for each auction
 
 The goal of this feature is to showcase state durability and recovery correctness.
 
 ### 2.5 Scope and Feasibility
 
-- The project scope is focused on backend reliability and infrastructure correctness, with less emphasis on UI complexity
-- Basic authentication 
-- Social graph/feed is a stretch goal, time permitted: implement follow/unfollow and the option to filter “auctions from followed creators”
+- The project scope is focused on backend reliability and infrastructure correctness rather than UI complexity
+- We will build a REST API first and ensure it is fully containerized, deployed on Kubernetes, and backed by persistent PostgreSQL storage
+- To keep the scope feasible for a two-person team, authentication will remain basic: users can register and log in, passwords will be hashed, and endpoints such as “create auction” and “place bid” will require authentication. We will not implement advanced identity features such as OAuth, email verification, or password recovery
+- A social feed was considered early on, but it is out of scope for this project to reduce risk. If time permits, we may implement follow/unfollow and the option to filter “auctions from followed creators”. 
 
-This focused scope is to ensure feasibility within the course timeframe for a two-person team, and it will allow depth in Kubernetes orchestration, persistence, deployment safety, and recovery validation.
+Overall this focused scope is to ensure feasibility within the timeframe for a two-person team, and it will allow depth in Kubernetes orchestration, persistence, deployment safety, and recovery validation.
 
 ## 3. Tentative Plan
 
@@ -113,7 +116,7 @@ This focused scope is to ensure feasibility within the course timeframe for a tw
 Before consulting AI, we established our primary learning objective: designing a real-world application capable of handling high production traffic with strict high availability (HA) and reliability. The system must remain available during unexpected node failures, implement robust failover strategies, and guarantee that persisted data is never lost or corrupted during an outage.
 
 ### 4.1 Architecture choices
-We will containerize our backend APIs using Docker and orchestrate them with Kubernetes to run multiple replica pods, ensuring high availability. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used by major tech companies to scale applications. It provides powerful lifecycle management features, such as automated rollouts, self-healing, and advanced traffic routing, which are essential for our HA goals.
+We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. To reduce operational complexity and risk for a two-person team, we plan to use DigitalOcean Managed PostgreSQL in production and keep schema migrations in the repository for reproducibility.
 
 ### 4.2 Anticipated challenges
 A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the ECE1779 course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating our HA and failover goals will be complex. We must design active failure scenarios—such as manually terminating server pods or simulating database crashes—to verify that the system successfully reroutes traffic and that persistent data remains intact.
@@ -121,13 +124,12 @@ A major challenge is Kubernetes' steep learning curve, especially since it is in
 ### 4.3 Early development approach
 * **Local Development:** We will build the core functional backend APIs and test them locally using Docker Compose to ensure container compatibility.
 * **Cloud Provisioning:** Once tested, we will provision infrastructure on DigitalOcean (likely tiulizing their managed Kubernetes service) to simplify control plane management.
-* **Orchestration & HA:** We will deploy the application via Kubernetes, configuring replica sets for server failover and setting up database replication with automated backups.
-* **Suggestion: instead of setting up database replication, We will leverage DigitalOcean’s managed PostgreSQL service, which provides built-in replication and automated backups.**
+* **Orchestration & Failure Tolerance:** We will deploy the application via Kubernetes with multiple replicas and add health probes to support automated recovery from pod failures. We will leverage DigitalOcean’s managed PostgreSQL service, which provides built-in replication, automated backups, and failover capabilities.
 * **Automation:** Finally, we will implement a CI/CD pipeline using GitHub Actions to automatically build our Docker images, push them to a container registry, and deploy updates to the cluster.
 
 ## 5. AI Assistance Disclosure
 We used AI to evaluate our initial project idea. Originally, we wanted to build an AI agent that integrates with Google Maps so that it can automatically propose things to do while we are traveling. After we asked AI to check the feasibility of this project idea, AI suggested that this project scope was too big and that two people might not be able to complete it within a month. Hence, we used AI to come up with this auction platform project idea, which has decent complexity and requires cloud infrastructure to guarantee high availability.
 
-In addition, we used AI to fix our grammar mistakes in the proposal doc, as well as to improve the sentence structures. Originally, the whole document consisted of giant paragraphs, and AI formatted some paragraphs into bullet points so that it is easier to read.
+In addition, we used AI to fix and refine wording and check for grammar, as well as to improve the sentence structures. Originally, the whole document consisted of giant paragraphs, and AI suggested to consolidate into bullet points so that it is easier to read and follow.
 
-We wrote the "Key Features" and "Initial Independent Reasoning" sections without using AI. Our team held meetings to brainstorm all the features that we wanted to build and the technology that we wanted to use. One big motivation was to learn about the technology that we think is useful instead of asking AI what the best approach is.
+Architectural decisions and system design choices were made through team discussion. Our team held meetings to brainstorm all the features that we wanted to build and the technology that we wanted to use. One big motivation was to learn about the technology that we think is useful instead of asking AI what the best approach is.
