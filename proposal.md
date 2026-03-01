@@ -42,7 +42,7 @@
 Before consulting AI, we established our primary learning objective: designing a real-world application capable of handling high production traffic with strict high availability (HA) and reliability. The system must remain available during unexpected node failures, implement robust failover strategies, and guarantee that persisted data is never lost or corrupted during an outage.
 
 ### Architecture choices
-We will containerize our backend APIs using Docker and orchestrate them with Kubernetes to run multiple stateless replica pods, ensuring high availability. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used by major tech companies to scale applications. It provides powerful lifecycle management features, such as automated rollouts, self-healing, and advanced traffic routing, which are essential for our HA goals.
+We will containerize our backend APIs using Docker and orchestrate them with Kubernetes to run multiple replica pods, ensuring high availability. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used by major tech companies to scale applications. It provides powerful lifecycle management features, such as automated rollouts, self-healing, and advanced traffic routing, which are essential for our HA goals.
 
 
 ### Anticipated challenges
@@ -55,7 +55,8 @@ A major challenge is Kubernetes' steep learning curve, especially since it is in
 * **Automation:** Finally, we will implement a CI/CD pipeline using GitHub Actions to automatically build our Docker images, push them to a container registry, and deploy updates to the cluster.
 
 ## 5. AI Assistance Disclosure
-We used AI primarily for grammar correction, readability enhancements, and initial project scoping. After using AI to evaluate our original idea—a complex AI agent integrating third-party APIs like Google Maps—against the project rubric, we realized the scope was too broad. We then prompted AI for alternative concepts and selected a cloud-native auction platform. This choice offers realistic business value and inherently demands the high availability required for a robust cloud infrastructure project.
+We used AI to evaluate our initial project idea. Originally, we wanted to build an AI agent that integrates with Google Maps so that it can automatically propose things to do while we are traveling. After we asked AI to check the feasibility of this project idea, AI suggested that this project scope was too big and that two people might not be able to complete it within a month. Hence, we used AI to come up with this auction platform project idea, which has decent complexity and requires cloud infrastructure to guarantee high availability.
 
+In addition, we used AI to fix our grammar mistakes in the proposal doc, as well as to improve the sentence structures. Originally, the whole document consisted of giant paragraphs, and AI formatted some paragraphs into bullet points so that it is easier to read.
 
-The "Key Features" and "Initial Independent Reasoning" sections were developed entirely without AI influence. Our team held collaborative design meetings to brainstorm functional requirements, define the project scope, and select a technology stack aligned with our learning objectives. These sections accurately document our original architectural decisions and engineering thought processes.
+We wrote the "Key Features" and "Initial Independent Reasoning" sections without using AI. Our team held meetings to brainstorm all the features that we wanted to build and the technology that we wanted to use. One big motivation was to learn about the technology that we think is useful instead of asking AI what the best approach is.
