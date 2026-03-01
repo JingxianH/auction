@@ -12,7 +12,8 @@ This project introduces an auction platform that allows users to list their own 
 ### 2.1 Objective
 Build and deploy a stateful auction platform where users create auctions and place bids while maintaining data consistency under concurrent bidding. The system will be containerized and deployed on DigitalOcean Kubernetes with persistent PostgreSQL storage. It will ensure correct bid outcomes and preserve state across pod restarts, rolling deployments, and backup-and-recovery scenarios
 
-### 2.2 Core Technical Requirements (How we will meet them)
+### 2.2 Core Technical Requirements
+
 #### Orchestration Approach: Kubernetes
 The backend API will be deployed to DigitalOcean Kubernetes using:
 - A Kubernetes Deployment with multiple replicas for the API
@@ -44,7 +45,7 @@ The platform will be deployed on:
 
 Docker will be used for containerization during local development, using Docker Compose to  manage API and database services
 
-### Monitoring Setup
+#### Monitoring Setup
 
 Monitoring will be implemented using DigitalOcean’s built-in monitoring and Kubernetes health checks.
 We will aim for the following:
