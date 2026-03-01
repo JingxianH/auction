@@ -35,7 +35,7 @@ Core tables: `users`, `auctions`, `bids`
   - Bid placement will use database transactions
   - Row-level locking or atomic update logic will prevent race conditions
   - Server time will be the source of truth for auction expiration
-  - For production deployment, DigitalOcean Managed PostgreSQL will be used to provide **persistent storage, automated backups, replication and durability** This will ensures state is preserved pod restarts, rolling deployments, and recovery scenarios.
+  - For production, we will use DigitalOcean Managed PostgreSQL to provide durable persistence and automated backups. We will validate recovery by restoring from a backup and verifying auction and bid consistency.
 
 #### Deployment Provider: DigitalOcean
 
@@ -109,11 +109,11 @@ Overall this focused scope is to ensure feasibility within the timeframe for a t
 ## 3. Tentative Plan
 
 ### Phase 1: Backend API Development (Mar 1 – 10)
-* **Auction Management (Jingxian):** Implement endpoints for item creation, image handling, auction duration, and reserve pricing.
-* **User & Bid Management (Felipe):** Develop account provisioning, user following, bid processing logic, and an auction status notification system.
+* **Auction Management (Jingxian):** Implement endpoints for item creation and auction duration settings. Optional image upload & reserve pricing (time permitting)
+* **User & Bid Management (Felipe):** Develop account provisioning, core authentication and user identity, bid processing logic, and an auction status notification system.
 
 ### Phase 2: Cloud Infrastructure & Automation (Mar 11 – 20)
-* **Orchestration & HA (Jingxian):** Provision DigitalOcean resources and deploy the app via Kubernetes. Implement and validate failover mechanisms for API pods and the database.
+* **Orchestration & Failure Tolerance (Jingxian):** Provision DigitalOcean resources and deploy the app via Kubernetes. Validate availability under API pod failures and rolling deployments, and validate data recovery using managed database backups.
 * **CI/CD Pipeline (Felipe):** Architect GitHub Actions workflows for automated container building and continuous deployment to the cluster.
 
 ### Phase 3: System Validation & Wrap-Up (Mar 21 – 25)
@@ -121,7 +121,9 @@ Overall this focused scope is to ensure feasibility within the timeframe for a t
 
 
 ## 4. Initial Independent Reasoning (Before Using AI)
-Before consulting AI, we established our primary learning objective: designing a distributed application that remains available during API pod failures and preserves persistent state during redeployments. The system must remain available during unexpected node failures, implement robust failover strategies, and ensure persisted data is not lost or corrupted during an outage.
+Before consulting AI, we established our primary learning objective: designing a stateful application that remains available under common failure scenarios and preserves correct state. The system must remain available during unexpected node failures, implement robust failover strategies, and ensure persisted data is not lost or corrupted during an outage.
+
+During early planning, we initially wanted to have a goal of *strict HA* and considered self-managed database replication. After reviewing feasibility and scope, we refined the goal to failure tolerance and correctness validation, and we selected DigitalOcean Managed PostgreSQL to reduce operational risk.
 
 ### 4.1 Architecture choices
 We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used in some major tech companies to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. To reduce operational complexity and risk for a two-person team, we plan to use DigitalOcean Managed PostgreSQL in production and keep schema migrations in the repository for reproducibility.
