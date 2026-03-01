@@ -10,10 +10,50 @@ This project introduces an auction platform that allows users to list their own 
 ## 2. Objective and Key Features
 
 ### 2.1 Objective
-Build a stateful auction platform that lets users create auctions and place bids, while showcasing core cloud concepts such as containerization, persistent data, Kubernetes orchestration, monitoring, and safe deployment. The system must keep auction and bid state correct during restarts, redeployments, and pod failures.
+Build and deploy a stateful auction platform where users create auctions and place bids while maintaining data consistency under concurrent bidding. The system will be containerized and deployed on DigitalOcean Kubernetes with persistent PostgreSQL storage. It will ensure correct bid outcomes and preserve state across pod restarts, rolling deployments, and backup-and-recovery scenarios
 
 ### 2.2 Core Technical Requirements (How we will meet them)
+#### Orchestration Approach: Kubernetes
+The backend API will be deployed to DigitalOcean Kubernetes using:
+- A Kubernetes Deployment with multiple replicas for the API
+- A Kubernetes Service for load balancing
+- Rolling update strategy for zero downtime deployments
+- Liveness and readiness probes for health monitoring
 
+#### Database Schema and Persistent Storage
+The application will use PostgreSQL as the primary database.
+
+Core tables: `users`, `auctions`, `bids`
+
+Main properties:
+- Each auction has an `end_time`
+- Bids reference both `auction_id` and `user_id`
+- The highest bid must always reflect the maximum valid bid
+
+Consideration for data consistency:
+- Bid placement will use database transactions
+- Row-level locking or atomic update logic will prevent race conditions
+- Server time will be the source of truth for auction expiration
+- For production deployment, DigitalOcean Managed PostgreSQL will be used to provide **persistent storage, automated backups, replication and durability** This will ensures state is preserved pod restarts, rolling deployments, and recovery scenarios.
+
+#### Deployment Provider: DigitalOcean
+
+The platform will be deployed on:
+- DigitalOcean Kubernetes for the API
+- DigitalOcean Managed PostgreSQL for the database
+
+Docker will be used for containerization during local development, using Docker Compose to  manage API and database services
+
+### Monitoring Setup
+
+Monitoring will be implemented using DigitalOcean’s built-in monitoring and Kubernetes health checks.
+We will aim for the following:
+- Expose a /health endpoint and configure Kubernetes liveness and readiness probes
+- Monitor CPU and memory usage of API pods
+- Configure alerts for abnormal restart rates
+- Log key application events (auction creation, bid acceptance/rejection, auction finish) for debugging and demonstration purposes
+
+  
 ### 2.3 Key Application Features (MVP)
 
 
