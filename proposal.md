@@ -5,7 +5,10 @@
 - Felipe Solano - 1002752032
 
 ## 1. Motivation
-This project introduces an auction platform that allows users to list their own items and enables buyers to follow their favorite sellers. This model differentiates itself from existing platforms by facilitating a "flash-sale" effect: when a prominent seller, such as a well-known artist, initiates an auction, a sudden influx of followers creates significant traffic spikes. Consequently, designing a highly available, high-throughput system is critical. Our target demographic consists of small merchants and independent crafters. We see substantial market potential in this space, as these creators currently lack specialized platforms tailored to their unique selling dynamics.
+This project proposes a stateful auction platform that allows users to list items for time-boxed bidding. The platform targets “flash-sale” style auctions: when a creator with an audience starts an auction, bidding activity can spike and multiple bids can arrive at nearly the same time. The platform will enforce auction closing rules using server time and maintain data consistency under concurrent bidding so that each auction ends with a single correct winner and a reliable bid history.
+
+Our target demographic consists of small merchants and independent crafters who want a simple way to run short auctions without relying on complex marketplace tools.  This project is worth pursuing because many general purpose platforms are not designed for safe bidding under concurrency, which is essential for reliable outcomes during high bidding periods.
+
 
 ## 2. Objective and Key Features
 
