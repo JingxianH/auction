@@ -89,6 +89,14 @@ Implement a CI/CD pipeline that:
 
 The goal of this feature is to showcase state durability and recovery correctness.
 
+#### Advanced Feature 3 (Optional): External Service Integration *Email Notifications*
+
+- If time permits, we plan to integrate an external email service, such as SendGrid, to send event notifications. Emails will be triggered for key system events, such as auction completion, notifying the winner and creator. 
+
+- To keep notifications consistent with the system state, the backend will call the external email API only after a successful database transaction commits. Email credentials will be stored using Kubernetes Secrets. The notification logic will be designed as a modular component so it can be enabled or disabled without affecting the bidding workflow.
+
+The goal of this feature is to showcase integration with a third-party service and secure credential management, with a separation between the core system and external communication.
+
 ### 2.5 Scope and Feasibility
 
 - The project scope is focused on backend reliability and infrastructure correctness rather than UI complexity
@@ -116,7 +124,7 @@ Overall this focused scope is to ensure feasibility within the timeframe for a t
 Before consulting AI, we established our primary learning objective: designing a real-world application capable of handling high production traffic with strict high availability (HA) and reliability. The system must remain available during unexpected node failures, implement robust failover strategies, and guarantee that persisted data is never lost or corrupted during an outage.
 
 ### 4.1 Architecture choices
-We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. To reduce operational complexity and risk for a two-person team, we plan to use DigitalOcean Managed PostgreSQL in production and keep schema migrations in the repository for reproducibility.
+We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used in some major tech companies to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. To reduce operational complexity and risk for a two-person team, we plan to use DigitalOcean Managed PostgreSQL in production and keep schema migrations in the repository for reproducibility.
 
 ### 4.2 Anticipated challenges
 A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the ECE1779 course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating our HA and failover goals will be complex. We must design active failure scenarios—such as manually terminating server pods or simulating database crashes—to verify that the system successfully reroutes traffic and that persistent data remains intact.
