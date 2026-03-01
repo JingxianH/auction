@@ -5,7 +5,7 @@
 - Felipe Solano - 1002752032
 
 ## 1. Motivation
-(TBD)
+This project introduces an auction platform that allows users to list their own items and enables buyers to follow their favorite sellers. This model differentiates itself from existing platforms by facilitating a "flash-sale" effect: when a prominent seller, such as a well-known artist, initiates an auction, a sudden influx of followers creates significant traffic spikes. Consequently, designing a highly available, high-throughput system is critical. Our target demographic consists of small merchants and independent crafters. We see substantial market potential in this space, as these creators currently lack specialized platforms tailored to their unique selling dynamics.
 
 ## 2. Objective and Key Features
 
