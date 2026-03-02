@@ -38,15 +38,13 @@ Core tables: `users`, `auctions`, `bids`
   - Bid placement will use database transactions
   - Row-level locking or atomic update logic will prevent race conditions
   - Server time will be the source of truth for auction expiration
-  - For production, we will use DigitalOcean Managed PostgreSQL to provide durable persistence and automated backups. We will validate recovery by restoring from a backup and verifying auction and bid consistency.
+  - For production, we will deploy PostgreSQL as a StatefulSet or Deployment within our Kubernetes cluster. We will use a DigitalOcean Block Storage `PersistentVolume` (PV) and `PersistentVolumeClaim` (PVC) to ensure database state survives pod restarts and redeployments.
 
 #### Deployment Provider: DigitalOcean
-
 The platform will be deployed on:
-- DigitalOcean Kubernetes for the API
-- DigitalOcean Managed PostgreSQL for the database
+- DigitalOcean Kubernetes for the API and PostgreSQL database workloads
 
-Docker will be used for containerization during local development, using Docker Compose to  manage API and database services
+Docker will be used for containerization during local development, using Docker Compose to manage API and database services.
 
 #### Monitoring Setup
 
@@ -86,12 +84,13 @@ Implement a CI/CD pipeline that:
 - Verifies rollout status using `kubectl rollout status` to keep the service available during deployments
 
 #### Advanced Feature 2: Backup and Recovery
-- Leverage DigitalOcean Managed PostgreSQL to perform automated backups
-- Document a recovery procedure and perform a recovery test
-  - Restore the database to a backup state, reconnect the API to the restored instance, and verify auction/bid consistency
-  - Include an integrity check that compares stored highest bid vs. MAX(bids) for each auction
+- Implement a Kubernetes `CronJob` to run periodic `pg_dump` backups of our self-hosted PostgreSQL database.
+- Automatically push these backup files to a secure cloud storage bucket (e.g., DigitalOcean Spaces).
+- Document a recovery procedure and perform a recovery test:
+  - Restore the database to a backup state from the cloud bucket, reconnect the API to the restored instance, and verify auction/bid consistency.
+  - Include an integrity check that compares stored highest bid vs. MAX(bids) for each auction.
 
-The goal of this feature is to showcase state durability and recovery correctness.
+The goal of this feature is to showcase state durability and recovery correctness without relying on a provider's managed database service.
 
 #### Advanced Feature 3 (Optional): External Service Integration *Email Notifications*
 
@@ -143,6 +142,8 @@ A major challenge is Kubernetes' steep learning curve, especially since it is in
 
 ## 5. AI Assistance Disclosure
 We used AI to evaluate our initial project idea. Originally, we wanted to build an AI agent that integrates with Google Maps so that it can automatically propose things to do while we are traveling. After we asked AI to check the feasibility of this project idea, AI suggested that this project scope was too big and that two people might not be able to complete it within a month. Hence, used AI to explore alternative project ideas after determining the original scope was too large.
+
+After finishing the design and proposal, we asked AI to evaluate the overall design based on the requirements. AI was able to identify that we were planning to use a DigitalOcean managed database with built-in recovery and autoscaling features. Since this is against the project requirements, it suggested that we deploy our own database.
 
 In addition, we used AI to fix and refine wording and check for grammar, as well as to improve the sentence structures. Originally, the whole document consisted of giant paragraphs, and AI suggested to consolidate into bullet points so that it is easier to read and follow.
 
