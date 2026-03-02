@@ -40,10 +40,8 @@ Core tables: `users`, `auctions`, `bids`
   - For production, PostgreSQL will run in-cluster as a StatefulSet with its data directory mounted to a DigitalOcean Block Storage PersistentVolumeClaim (PVC) to ensure durability across pod restarts and rescheduling
 
 #### Deployment Provider: DigitalOcean
-The platform will be deployed on:
-- DigitalOcean Kubernetes for the API and PostgreSQL database workloads.
-- 
-Docker will be used for containerization during local development, using Docker Compose to manage API and database services.
+- The platform will be deployed on: DigitalOcean Kubernetes for the API and PostgreSQL database workloads.
+- Docker will be used for containerization during local development, using Docker Compose to manage API and database services.
 
 #### Monitoring Setup
 
@@ -131,12 +129,12 @@ During early planning, we initially considered using a managed database service 
 We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used in some major tech companies to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. Considering we are a two-person team, we plan to run PostgreSQL inside the Kubernetes cluster as a StatefulSet backed by a PersistentVolumeClaim, and keep schema migrations in the repository for reproducibility.
 
 ### 4.2 Anticipated challenges
-A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating  availability and recovery behavior will be complex. We must design active failure scenarios such as manually terminating server pods to confirm traffic is routed to another healthy replica and to perform a restore test for the database to verify that auction and bid state remains consistent after recovery
+A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating  availability and recovery behavior will be complex. We must design active failure scenarios such as manually terminating server pods to confirm traffic is routed to another healthy replica and to perform a restore test for the database to verify that auction and bid state remains consistent after recovery.
 
 ### 4.3 Early development approach
 * **Local Development:** We will build the core functional backend APIs and test them locally using Docker Compose to ensure container compatibility.
 * **Cloud Provisioning:** Once tested, we will provision infrastructure on DigitalOcean (likely using their managed Kubernetes service) to simplify control plane management.
-* **Orchestration & Failure Tolerance:** We will deploy the application via Kubernetes with multiple replicas and add health probes to support automated recovery from pod failures. PostgreSQL will run as a StatefulSet backed by a PersistentVolumeClaim. We will implement scheduled backups using a Kubernetes CronJob and validate recovery through a restore test
+* **Orchestration & Failure Tolerance:** We will deploy the application via Kubernetes with multiple replicas and add health probes to support automated recovery from pod failures. PostgreSQL will run as a StatefulSet backed by a PersistentVolumeClaim. We will implement scheduled backups using a Kubernetes CronJob and validate recovery through a restore test.
 * **Automation:** Finally, we will implement a CI/CD pipeline using GitHub Actions to automatically build our Docker images, push them to a container registry, and deploy updates to the cluster.
 
 ## 5. AI Assistance Disclosure
