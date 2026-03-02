@@ -54,7 +54,8 @@ Monitoring will be implemented using DigitalOcean’s built-in monitoring and Ku
 We will aim for the following:
 - Expose a `/health` endpoint and configure Kubernetes liveness and readiness probes
 - Use DigitalOcean metrics for cluster and workload resource usage i.e. CPU and memory
-- Configure at least one alert, such as high CPU/memory or repeated pod restarts (abnormal restart rates)
+- Configure at least one system level alert, such as high CPU/memory or repeated pod restarts (abnormal restart rates)
+- Configure alert for APIs, the alert will be triggered when 5xx error is raised
 - Log key application events (auction creation, bid acceptance/rejection, auction finish) for debugging and demonstration purposes
 
   
@@ -132,7 +133,7 @@ During early planning, we initially wanted to have a goal of *strict HA* and con
 We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used in some major tech companies to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. Considering we are a two-person team, we plan to use DigitalOcean Managed PostgreSQL in production and keep schema migrations in the repository for reproducibility.
 
 ### 4.2 Anticipated challenges
-A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the ECE1779 course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating our HA and failover goals will be complex. We must design active failure scenarios such as manually terminating server pods to confirm traffics is routed to another healthy replica and to perform a restore test for the database to verify that auction and bid state remains consistent after recovery
+A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating our HA and failover goals will be complex. We must design active failure scenarios such as manually terminating server pods to confirm traffics is routed to another healthy replica and to perform a restore test for the database to verify that auction and bid state remains consistent after recovery
 
 ### 4.3 Early development approach
 * **Local Development:** We will build the core functional backend APIs and test them locally using Docker Compose to ensure container compatibility.
