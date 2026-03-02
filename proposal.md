@@ -7,13 +7,13 @@
 ## 1. Motivation
 This project proposes a stateful auction platform that allows users to list items for time-boxed bidding. The platform targets “flash-sale” style auctions: when a creator with an audience starts an auction, bidding activity can spike and multiple bids can arrive at nearly the same time. The platform will enforce auction closing rules using server time and maintain data consistency under concurrent bidding so that each auction ends with a single correct winner and a reliable bid history.
 
-Our target demographic consists of small merchants and independent crafters who want a simple way to run short auctions without relying on complex marketplace tools.  This project is worth pursuing because many general purpose platforms are not designed for safe bidding under concurrency, which is essential for reliable outcomes during high bidding periods.
+Our target users consists of small merchants and independent crafters who want a simple way to run short auctions without relying on complex marketplace tools.  This project is worth pursuing because many general purpose platforms are not designed for safe bidding under concurrency, which is essential for reliable outcomes during high bidding periods.
 
 
 ## 2. Objective and Key Features
 
 ### 2.1 Objective
-Build and deploy a stateful auction platform where users create auctions and place bids while maintaining data consistency under concurrent bidding. The system will be containerized and deployed on DigitalOcean Kubernetes with persistent PostgreSQL storage. It will ensure correct bid outcomes and preserve state across pod restarts, rolling deployments, and backup-and-recovery scenarios
+Build and deploy a stateful auction platform where users create auctions and place bids while maintaining data consistency under concurrent bidding. The system will be containerized and deployed on DigitalOcean Kubernetes with persistent PostgreSQL storage. It will ensure correct bid outcomes and preserve state across pod restarts, rolling deployments, and recovery scenarios
 
 ### 2.2 Core Technical Requirements
 
@@ -25,8 +25,7 @@ The backend API will be deployed to DigitalOcean Kubernetes using:
 - Liveness and readiness probes for health monitoring
 
 #### Database Schema and Persistent Storage
-The application will use PostgreSQL as the primary database.
-
+The application will use PostgreSQL as the primary database. 
 Core tables: `users`, `auctions`, `bids`
 
 * **Main properties:**
@@ -38,12 +37,12 @@ Core tables: `users`, `auctions`, `bids`
   - Bid placement will use database transactions
   - Row-level locking or atomic update logic will prevent race conditions
   - Server time will be the source of truth for auction expiration
-  - For production, we will deploy PostgreSQL as a StatefulSet or Deployment within our Kubernetes cluster. We will use a DigitalOcean Block Storage `PersistentVolume` (PV) and `PersistentVolumeClaim` (PVC) to ensure database state survives pod restarts and redeployments.
+  - For production, PostgreSQL will run in-cluster as a StatefulSet with its data directory mounted to a DigitalOcean Block Storage PersistentVolumeClaim (PVC) to ensure durability across pod restarts and rescheduling
 
 #### Deployment Provider: DigitalOcean
 The platform will be deployed on:
-- DigitalOcean Kubernetes for the API and PostgreSQL database workloads
-
+- DigitalOcean Kubernetes for the API and PostgreSQL database workloads.
+- 
 Docker will be used for containerization during local development, using Docker Compose to manage API and database services.
 
 #### Monitoring Setup
@@ -53,7 +52,7 @@ We will aim for the following:
 - Expose a `/health` endpoint and configure Kubernetes liveness and readiness probes
 - Use DigitalOcean metrics for cluster and workload resource usage i.e. CPU and memory
 - Configure at least one system level alert, such as high CPU/memory or repeated pod restarts (abnormal restart rates)
-- Configure alert for APIs, the alert will be triggered when 5xx error is raised
+- If feasible, we will configure an alert for API failures, such as when the 5xx error rate exceeds a defined threshold
 - Log key application events (auction creation, bid acceptance/rejection, auction finish) for debugging and demonstration purposes
 
   
@@ -84,13 +83,13 @@ Implement a CI/CD pipeline that:
 - Verifies rollout status using `kubectl rollout status` to keep the service available during deployments
 
 #### Advanced Feature 2: Backup and Recovery
-- Implement a Kubernetes `CronJob` to run periodic `pg_dump` backups of our self-hosted PostgreSQL database.
-- Automatically push these backup files to a secure cloud storage bucket (e.g., DigitalOcean Spaces).
+- Implement a Kubernetes `CronJob` to run periodic `pg_dump` backups of the PostgreSQL database
+- Upload backups to DigitalOcean Spaces
 - Document a recovery procedure and perform a recovery test:
   - Restore the database to a backup state from the cloud bucket, reconnect the API to the restored instance, and verify auction/bid consistency.
   - Include an integrity check that compares stored highest bid vs. MAX(bids) for each auction.
 
-The goal of this feature is to showcase state durability and recovery correctness without relying on a provider's managed database service.
+The goal of this feature is to showcase state durability and recovery correctness
 
 #### Advanced Feature 3 (Optional): External Service Integration *Email Notifications*
 
@@ -116,7 +115,7 @@ Overall this focused scope is to ensure feasibility within the timeframe for a t
 * **User & Bid Management (Felipe):** Develop account provisioning, core authentication and user identity, bid processing logic, and an auction status notification system.
 
 ### Phase 2: Cloud Infrastructure & Automation (Mar 11 – 20)
-* **Orchestration & Failure Tolerance (Jingxian):** Provision DigitalOcean resources and deploy the app via Kubernetes. Validate availability under API pod failures and rolling deployments, and validate data recovery using managed database backups.
+* **Orchestration & Failure Tolerance (Jingxian):** Provision DigitalOcean resources and deploy the app via Kubernetes. Validate availability under API pod failures and rolling deployments, and validate data recovery using CronJob backups (pg_dump) stored in DigitalOcean Spaces.
 * **CI/CD Pipeline (Felipe):** Architect GitHub Actions workflows for automated container building and continuous deployment to the cluster.
 
 ### Phase 3: System Validation & Wrap-Up (Mar 21 – 25)
@@ -124,26 +123,26 @@ Overall this focused scope is to ensure feasibility within the timeframe for a t
 
 
 ## 4. Initial Independent Reasoning (Before Using AI)
-Before consulting AI, we established our primary learning objective: designing a stateful application that remains available under common failure scenarios and preserves correct state. The system must remain available during unexpected node failures, implement robust failover strategies, and ensure persisted data is not lost or corrupted during an outage.
+Before consulting AI, we established our primary learning objective: designing a stateful application that remains available under common failure scenarios and preserves correct state. The system must remain available during unexpected node failures, recover from common failure scenarios, and ensure persisted data is not lost or corrupted during an outage.
 
-During early planning, we initially wanted to have a goal of *strict HA* and considered self-managed database replication. After reviewing feasibility and scope, we refined the goal to failure tolerance and correctness validation, and we selected DigitalOcean Managed PostgreSQL to reduce risk.
+During early planning, we initially considered using a managed database service to reduce operational complexity. After reviewing the project requirements, we decided to deploy PostgreSQL inside our Kubernetes cluster using a StatefulSet with a PersistentVolumeClaim. This allows us to explicitly demonstrate persistent storage management and recovery validation within Kubernetes while keeping the database configuration simple
 
 ### 4.1 Architecture choices
-We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used in some major tech companies to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. Considering we are a two-person team, we plan to use DigitalOcean Managed PostgreSQL in production and keep schema migrations in the repository for reproducibility.
+We decided to containerize the backend API with Docker and develop locally with Docker Compose to mirror a multi-container setup (API + PostgreSQL). For deployment, we chose DigitalOcean and Kubernetes. We chose Kubernetes over Docker Swarm because, while Swarm is simpler to set up, Kubernetes is the industry standard used in some major tech companies to scale applications and it provides mature lifecycle management features. Using Deployments and Services will allow us to showcase scaling, pod replacement, and safe deployments. For persistence, we chose PostgreSQL as the system of record for users, auctions, and bids. Considering we are a two-person team, we plan to run PostgreSQL inside the Kubernetes cluster as a StatefulSet backed by a PersistentVolumeClaim, and keep schema migrations in the repository for reproducibility.
 
 ### 4.2 Anticipated challenges
-A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating our HA and failover goals will be complex. We must design active failure scenarios such as manually terminating server pods to confirm traffics is routed to another healthy replica and to perform a restore test for the database to verify that auction and bid state remains consistent after recovery
+A major challenge is Kubernetes' steep learning curve, especially since it is introduced later in the course. We will need to dedicate time to mastering core concepts like Deployments, Services, and Persistent Volumes. Secondly, validating  availability and recovery behavior will be complex. We must design active failure scenarios such as manually terminating server pods to confirm traffic is routed to another healthy replica and to perform a restore test for the database to verify that auction and bid state remains consistent after recovery
 
 ### 4.3 Early development approach
 * **Local Development:** We will build the core functional backend APIs and test them locally using Docker Compose to ensure container compatibility.
-* **Cloud Provisioning:** Once tested, we will provision infrastructure on DigitalOcean (likely tiulizing their managed Kubernetes service) to simplify control plane management.
-* **Orchestration & Failure Tolerance:** We will deploy the application via Kubernetes with multiple replicas and add health probes to support automated recovery from pod failures. We will leverage DigitalOcean’s managed PostgreSQL service, which provides built-in replication, automated backups, and failover capabilities.
+* **Cloud Provisioning:** Once tested, we will provision infrastructure on DigitalOcean (likely using their managed Kubernetes service) to simplify control plane management.
+* **Orchestration & Failure Tolerance:** We will deploy the application via Kubernetes with multiple replicas and add health probes to support automated recovery from pod failures. PostgreSQL will run as a StatefulSet backed by a PersistentVolumeClaim. We will implement scheduled backups using a Kubernetes CronJob and validate recovery through a restore test
 * **Automation:** Finally, we will implement a CI/CD pipeline using GitHub Actions to automatically build our Docker images, push them to a container registry, and deploy updates to the cluster.
 
 ## 5. AI Assistance Disclosure
 We used AI to evaluate our initial project idea. Originally, we wanted to build an AI agent that integrates with Google Maps so that it can automatically propose things to do while we are traveling. After we asked AI to check the feasibility of this project idea, AI suggested that this project scope was too big and that two people might not be able to complete it within a month. Hence, used AI to explore alternative project ideas after determining the original scope was too large.
 
-After finishing the design and proposal, we asked AI to evaluate the overall design based on the requirements. AI was able to identify that we were planning to use a DigitalOcean managed database with built-in recovery and autoscaling features. Since this is against the project requirements, it suggested that we deploy our own database.
+After finishing the design and proposal, we asked AI to evaluate the overall design based on the requirements. AI highlighted that using a managed database might not demonstrate Kubernetes PV/PVC requirements clearly. Based on that feedback, we revised the design to run PostgreSQL in-cluster with a PVC and implement our own backup/restore process
 
 In addition, we used AI to fix and refine wording and check for grammar, as well as to improve the sentence structures. Originally, the whole document consisted of giant paragraphs, and AI suggested to consolidate into bullet points so that it is easier to read and follow.
 
