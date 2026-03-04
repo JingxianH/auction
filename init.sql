@@ -7,16 +7,23 @@ CREATE TABLE IF NOT EXISTS users (
 -- Define the custom enum for auction status
 CREATE TYPE auction_status AS ENUM ('active', 'completed', 'cancelled');
 
-CREATE TABLE IF NOT EXISTS auctions (
+CREATE TABLE auctions (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    starting_price DECIMAL(10, 2) NOT NULL,
-    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    status auction_status DEFAULT 'active',
-    creator_id INTEGER REFERENCES users(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    starting_price DECIMAL NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    creator_id INTEGER NOT NULL,
+    winner_id INTEGER
 );
 
+CREATE TABLE bids (
+    id SERIAL PRIMARY KEY,
+    auction_id INTEGER REFERENCES auctions(id),
+    user_id INTEGER NOT NULL,
+    amount DECIMAL NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 -- Insert a mock user for testing
 INSERT INTO users (username, password_hash) VALUES ('testuser', 'hashedpassword123') ON CONFLICT DO NOTHING;
