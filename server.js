@@ -31,7 +31,6 @@ app.post('/api/auctions', async (req, res) => {
       RETURNING *;
     `;
     const values = [title, description, starting_price, end_time, creator_id];
-    
     const result = await pool.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -41,16 +40,23 @@ app.post('/api/auctions', async (req, res) => {
 });
 
 app.get('/api/auctions', async (req, res) => {
-  const { status } = req.query; 
-  
+  const { status, search } = req.query;
+
   try {
-    let query = 'SELECT * FROM auctions';
+    let query = 'SELECT * FROM auctions WHERE 1=1';
     let values = [];
+    let counter = 1;
+
+    if (search) {
+      query += ` AND title ILIKE $${counter}`;
+      values.push(`%${search}%`);
+      counter++;
+    }
 
     if (status === 'active') {
-      query += " WHERE status = 'active' AND end_time > CURRENT_TIMESTAMP";
+      query += " AND status = 'active' AND end_time > CURRENT_TIMESTAMP";
     } else if (status === 'completed') {
-      query += " WHERE status = 'completed' OR end_time <= CURRENT_TIMESTAMP";
+      query += " AND (status = 'completed' OR end_time <= CURRENT_TIMESTAMP)";
     }
 
     query += ' ORDER BY end_time ASC';
