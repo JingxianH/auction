@@ -1,0 +1,139 @@
+---
+# 1. Database Persistent Volume Claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: do-block-storage
+
+---
+# 2. Database Service (Internal Network)
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+
+---
+# 3. Database StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_USER
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_USER } }
+        - name: POSTGRES_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_PASSWORD } }
+        - name: POSTGRES_DB
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_DB } }
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+---
+# 4. API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: poeticjanus/auction-api:latest
+        imagePullPolicy: Always
+        env:
+        - name: DB_HOST
+          value: "db"
+        - name: DB_USER
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_USER } } 
+        - name: DB_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_PASSWORD } }
+        - name: DB_NAME
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_DB } }
+        ports:
+        - containerPort: 3000
+
+---
+# 5. API NodePort Service (Free Public Access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+spec:
+  type: NodePort
+  selector:
+    app: api
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30000 
+
+---
+# 6. Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: worker
+        image: poeticjanus/auction-api:latest
+        command: ["node", "worker.js"]
+        env:
+        - name: DB_HOST
+          value: "db"
+        - name: DB_USER
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_USER } }
+        - name: DB_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_PASSWORD } }
+        - name: DB_NAME
+          valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_DB } }
