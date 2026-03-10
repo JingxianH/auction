@@ -13,7 +13,7 @@ const pool = new Pool({
 });
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).send('Auction API is healthy - CI/CD Automation Successful!');
 });
 
 
