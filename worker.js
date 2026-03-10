@@ -56,5 +56,5 @@ async function processExpiredAuctions() {
   }
 }
 
-// Run every 10 seconds
-setInterval(processExpiredAuctions, 10000);
+// Run every 1 hour
+setInterval(processExpiredAuctions, 3600000);

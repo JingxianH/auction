@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: db-backup
 spec:
-  schedule: "*/5 * * * *" 
+  schedule: "0 0 * * *" 
   jobTemplate:
     spec:
       template:
