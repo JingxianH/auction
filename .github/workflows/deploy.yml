@@ -1,0 +1,42 @@
+name: Build and Deploy to DigitalOcean Kubernetes
+
+on:
+  push:
+    branches:# This pipeline only runs when code is pushed to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/auction-api:latest
+
+      - name: Install DigitalOcean CLI (doctl)
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Save DigitalOcean Kubeconfig
+        run: doctl kubernetes cluster kubeconfig save auction-cluster
+
+      - name: Deploy to Kubernetes
+        run: |
+          # 1. Apply your Kubernetes architecture
+          kubectl apply -f k8s-deploy.yaml
+          
+          # 2. Force Kubernetes to pull the new 'latest' image we just pushed
+          kubectl rollout restart deployment/api
+          kubectl rollout restart deployment/worker
