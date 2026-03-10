@@ -2,7 +2,8 @@ name: Build and Deploy to DigitalOcean Kubernetes
 
 on:
   push:
-    branches:# This pipeline only runs when code is pushed to the main branch
+    branches:
+      - main
 
 jobs:
   build-and-deploy:
