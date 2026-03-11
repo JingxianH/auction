@@ -15,8 +15,10 @@ spec:
             - /bin/sh
             - -c
             - |
+              set -e  # <-- Safety switch
+              
               echo "Installing tools..."
-              apk add --no-cache postgresql-client aws-cli
+              apk update && apk add --no-cache postgresql-client aws-cli > /dev/null
               
               export AWS_ACCESS_KEY_ID=$SPACES_ACCESS_KEY
               export AWS_SECRET_ACCESS_KEY=$SPACES_SECRET_KEY
@@ -24,7 +26,7 @@ spec:
               FILE_NAME="auctiondb-$TIMESTAMP.sql"
               
               echo "Starting database dump..."
-              PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h postgres-0.postgres.default.svc.cluster.local -U $POSTGRES_USER -d $POSTGRES_DB > /tmp/$FILE_NAME
+              PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h db -U $POSTGRES_USER -d $POSTGRES_DB > /tmp/$FILE_NAME
               
               echo "Uploading to DigitalOcean Spaces..."
               aws s3 cp /tmp/$FILE_NAME s3://$SPACE_NAME/$FILE_NAME --endpoint-url https://tor1.digitaloceanspaces.com
