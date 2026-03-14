@@ -151,29 +151,180 @@ app.get('/api/auctions', async (req, res) => {
   const { status, search } = req.query;
 
   try {
-    let query = 'SELECT * FROM auctions WHERE 1=1';
-    let values = [];
+    // Include the current highest bid (if any) for each auction
+    let query = `
+      SELECT a.*, b.highest_bid
+      FROM auctions a
+      LEFT JOIN (
+        SELECT auction_id, MAX(amount) AS highest_bid
+        FROM bids
+        GROUP BY auction_id
+      ) b ON a.id = b.auction_id
+      WHERE 1=1
+    `;
+
+    const values = [];
     let counter = 1;
 
     if (search) {
-      query += ` AND title ILIKE $${counter}`;
+      query += ` AND a.title ILIKE $${counter}`;
       values.push(`%${search}%`);
       counter++;
     }
 
     if (status === 'active') {
-      query += " AND status = 'active' AND end_time > CURRENT_TIMESTAMP";
+      query += " AND a.status = 'active' AND a.end_time > CURRENT_TIMESTAMP";
     } else if (status === 'completed') {
-      query += " AND (status = 'completed' OR end_time <= CURRENT_TIMESTAMP)";
+      query += " AND (a.status = 'completed' OR a.end_time <= CURRENT_TIMESTAMP)";
     }
 
-    query += ' ORDER BY end_time ASC';
+    query += ' ORDER BY a.end_time ASC';
 
     const result = await pool.query(query, values);
     res.status(200).json(result.rows);
   } catch (err) {
     console.error('Error fetching auctions:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get a single auction (with highest bid + winner info)
+app.get('/api/auctions/:id', async (req, res) => {
+  const auctionId = parseInt(req.params.id, 10);
+
+  if (Number.isNaN(auctionId)) {
+    return res.status(400).json({ error: 'Invalid auction id' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT a.*, b.highest_bid
+        FROM auctions a
+        LEFT JOIN (
+          SELECT auction_id, MAX(amount) AS highest_bid
+          FROM bids
+          GROUP BY auction_id
+        ) b ON a.id = b.auction_id
+        WHERE a.id = $1
+      `,
+      [auctionId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching auction:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get bid history for an auction
+app.get('/api/auctions/:id/bids', async (req, res) => {
+  const auctionId = parseInt(req.params.id, 10);
+
+  if (Number.isNaN(auctionId)) {
+    return res.status(400).json({ error: 'Invalid auction id' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT b.id, b.amount, b.created_at, b.user_id, u.username
+        FROM bids b
+        JOIN users u ON u.id = b.user_id
+        WHERE b.auction_id = $1
+        ORDER BY b.amount DESC, b.created_at ASC
+      `,
+      [auctionId]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error fetching bid history:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Place a bid on an auction
+app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
+  const auctionId = parseInt(req.params.id, 10);
+  const { amount } = req.body;
+  const userId = req.user.id;
+
+  if (Number.isNaN(auctionId)) {
+    return res.status(400).json({ error: 'Invalid auction id' });
+  }
+
+  if (amount === undefined || isNaN(amount) || Number(amount) <= 0) {
+    return res.status(400).json({ error: 'Bid amount must be a positive number' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Lock the auction row to avoid race conditions
+    const auctionResult = await client.query(
+      'SELECT id, starting_price, end_time, status FROM auctions WHERE id = $1 FOR UPDATE',
+      [auctionId]
+    );
+
+    if (auctionResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    const auction = auctionResult.rows[0];
+
+    // Enforce auction state & time rules
+    if (auction.status !== 'active') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Auction is not active' });
+    }
+
+    if (new Date(auction.end_time) <= new Date()) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Auction has already ended' });
+    }
+
+    // Determine the current highest bid (or fallback to starting price)
+    const highestBidResult = await client.query(
+      'SELECT MAX(amount) AS max_amount FROM bids WHERE auction_id = $1',
+      [auctionId]
+    );
+
+    const currentHighest = highestBidResult.rows[0].max_amount
+      ? parseFloat(highestBidResult.rows[0].max_amount)
+      : parseFloat(auction.starting_price);
+
+    if (Number(amount) <= currentHighest) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Bid must be higher than the current highest bid' });
+    }
+
+    const insertResult = await client.query(
+      'INSERT INTO bids (auction_id, user_id, amount) VALUES ($1, $2, $3) RETURNING *',
+      [auctionId, userId, amount]
+    );
+
+    await client.query('COMMIT');
+
+    console.log(`User ${userId} placed a bid of ${amount} on auction ${auctionId}`);
+
+    res.status(201).json({
+      message: 'Bid placed successfully',
+      bid: insertResult.rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error placing bid:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 
