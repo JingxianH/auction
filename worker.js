@@ -56,5 +56,6 @@ async function processExpiredAuctions() {
   }
 }
 
-// Run every 1 hour
-setInterval(processExpiredAuctions, 3600000);
+// Run every 1 minute by default (configurable via WORKER_INTERVAL_MS)
+const WORKER_INTERVAL_MS = Number(process.env.WORKER_INTERVAL_MS) || 3600000;
+setInterval(processExpiredAuctions, WORKER_INTERVAL_MS);
