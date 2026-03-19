@@ -144,6 +144,32 @@ app.get('/api/users/me', authenticate_token, async (req, res) => {
   }
 });
 
+app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT a.*, b.highest_bid
+        FROM auctions a
+        LEFT JOIN (
+          SELECT auction_id, MAX(amount) AS highest_bid
+          FROM bids
+          GROUP BY auction_id
+        ) b ON a.id = b.auction_id
+        WHERE a.creator_id = $1
+        ORDER BY a.end_time ASC
+      `,
+      [userId]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error getting user auctions:', error);
+    res.status(500).json({ error:'Internal server error' });
+  }
+});
+
 app.post('/api/auctions', authenticate_token, async (req, res) => {
   const { title, description, starting_price, end_time } = req.body;
   const creator_id = req.user.id; // get creator id from token
