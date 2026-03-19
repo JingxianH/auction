@@ -231,6 +231,15 @@ app.get('/api/auctions/:id/bids', async (req, res) => {
   }
 
   try {
+    const auctionCheck = await pool.query(
+      'SELECT id FROM auctions WHERE id = $1',
+      [auctionId]
+    );
+
+    if (auctionCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
     const result = await pool.query(
       `
         SELECT b.id, b.amount, b.created_at, b.user_id, u.username

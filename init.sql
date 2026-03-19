@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Define the custom enum for auction status (enforces valid status values)
-CREATE TYPE IF NOT EXISTS auction_status AS ENUM ('active', 'completed', 'cancelled');
+CREATE TYPE auction_status AS ENUM ('active', 'completed', 'cancelled', 'expired');
 
 CREATE TABLE IF NOT EXISTS auctions (
     id SERIAL PRIMARY KEY,
