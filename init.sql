@@ -4,24 +4,24 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL
 );
 
--- Define the custom enum for auction status
-CREATE TYPE auction_status AS ENUM ('active', 'completed', 'cancelled');
+-- Define the custom enum for auction status (enforces valid status values)
+CREATE TYPE auction_status AS ENUM ('active', 'completed', 'cancelled', 'expired');
 
-CREATE TABLE auctions (
+CREATE TABLE IF NOT EXISTS auctions (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     starting_price DECIMAL NOT NULL,
     end_time TIMESTAMP NOT NULL,
-    status VARCHAR(20) DEFAULT 'active',
-    creator_id INTEGER NOT NULL,
-    winner_id INTEGER
+    status auction_status NOT NULL DEFAULT 'active',
+    creator_id INTEGER NOT NULL REFERENCES users(id),
+    winner_id INTEGER REFERENCES users(id)
 );
 
-CREATE TABLE bids (
+CREATE TABLE IF NOT EXISTS bids (
     id SERIAL PRIMARY KEY,
-    auction_id INTEGER REFERENCES auctions(id),
-    user_id INTEGER NOT NULL,
+    auction_id INTEGER NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
     amount DECIMAL NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

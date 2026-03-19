@@ -12,8 +12,10 @@ spec:
         - /bin/sh
         - -c
         - |
+          set -e  # <-- CRITICAL: Stops the script instantly on any error
+          
           echo "Installing tools..."
-          apk add --no-cache postgresql-client aws-cli > /dev/null
+          apk update && apk add --no-cache postgresql-client aws-cli > /dev/null
           
           export AWS_ACCESS_KEY_ID=$SPACES_ACCESS_KEY
           export AWS_SECRET_ACCESS_KEY=$SPACES_SECRET_KEY
@@ -31,12 +33,12 @@ spec:
           
           echo "Wiping current database schema..."
           export PGPASSWORD=$POSTGRES_PASSWORD
-          psql -h postgres-0.postgres.default.svc.cluster.local -U $POSTGRES_USER -d $POSTGRES_DB -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+          psql -h db -U $POSTGRES_USER -d $POSTGRES_DB -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
           
           echo "Restoring data from backup..."
-          psql -h postgres-0.postgres.default.svc.cluster.local -U $POSTGRES_USER -d $POSTGRES_DB < /tmp/latest.sql
+          psql -h db -U $POSTGRES_USER -d $POSTGRES_DB < /tmp/latest.sql
           
-          echo "Restore completely successfully!"
+          echo "Restore completed successfully!"
         env:
         - name: SPACES_ACCESS_KEY
           valueFrom: { secretKeyRef: { name: backup-secrets, key: SPACES_ACCESS_KEY } }

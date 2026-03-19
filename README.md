@@ -35,6 +35,22 @@ This repository contains the implementation of a stateful auction platform API b
 
 3. The database will be initialized with the schema from `init.sql`.
 
+### API Endpoints (local)
+
+#### Authentication
+- `POST /api/register` – create a new user
+- `POST /api/login` – authenticate and receive a JWT
+
+#### Auctions
+- `POST /api/auctions` – create a new auction (requires `Authorization: Bearer <token>`)
+- `GET /api/auctions` – list auctions (supports `?status=active|completed` and `?search=...`)
+- `GET /api/auctions/:id` – get auction details (includes current highest bid)
+
+#### Bids
+- `POST /api/auctions/:id/bids` – place a bid (requires `Authorization: Bearer <token>`)
+- `GET /api/auctions/:id/bids` – list bid history for an auction
+
+
 ## Prerequisites
 * **DigitalOcean Account** with a Read/Write Personal Access Token (PAT).
 * **Installed Tools:** `terraform`, `kubectl`, and `doctl`.
