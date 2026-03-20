@@ -150,14 +150,20 @@ app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT a.*, b.highest_bid
+        SELECT 
+          a.id,
+          a.title,
+          a.description,
+          a.starting_price,
+          a.end_time,
+          a.status,
+          a.creator_id,
+          a.winner_id,
+          MAX(b.amount) AS highest_bid
         FROM auctions a
-        LEFT JOIN (
-          SELECT auction_id, MAX(amount) AS highest_bid
-          FROM bids
-          GROUP BY auction_id
-        ) b ON a.id = b.auction_id
+        LEFT JOIN bids b ON a.id = b.auction_id
         WHERE a.creator_id = $1
+        GROUP BY a.id
         ORDER BY a.end_time ASC
       `,
       [userId]
