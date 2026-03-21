@@ -54,11 +54,14 @@ jobs:
 
           # 2. Apply your Kubernetes architecture
           kubectl apply -f k8s-deploy.yaml -f backup-cronjob.yaml
+
+          # 3. Ensure database schema is up to date
+          kubectl exec -i postgres-0 -- psql -U postgres -d auctiondb < init.sql || echo "Warning: init.sql application had issues, check logs"
           
-          # 3. Force Kubernetes to pull the new 'latest' image we just pushed
+          # 4. Force Kubernetes to pull the new 'latest' image we just pushed
           kubectl rollout restart deployment/api
           kubectl rollout restart deployment/worker
           
-          # 4. Verify the rollout status
+          # 5. Verify the rollout status
           kubectl rollout status deployment/api --timeout=120s
           kubectl rollout status deployment/worker --timeout=120s
