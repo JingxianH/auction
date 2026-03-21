@@ -92,7 +92,16 @@ kubectl create secret generic db-secrets \
   --from-literal=POSTGRES_PASSWORD=SuperSecret123 \
   --from-literal=POSTGRES_DB=auctiondb
 
-# 2. Deploy API, Worker, and Database
+# 2. Create application secrets (JWT + SMTP email)
+kubectl create secret generic app-secrets \
+  --from-literal=JWT_SECRET=<your-jwt-secret> \
+  --from-literal=SMTP_HOST=smtp.gmail.com \
+  --from-literal=SMTP_PORT=587 \
+  --from-literal=SMTP_USER=<your-email@gmail.com> \
+  --from-literal=SMTP_PASS=<your-gmail-app-password> \
+  --from-literal=EMAIL_FROM=<your-email@gmail.com>
+
+# 3. Deploy API, Worker, and Database
 kubectl apply -f k8s-deploy.yaml
 
 # 3. Apply infrastructure hotfixes (fixes DO block storage and K8s networking conflicts)
