@@ -45,16 +45,16 @@ function authenticate_token(req, res, next) {
 }
 
 app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body; // username and password
+  const { username, password, email } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
+  if (!username || !password || !email) {
+    return res.status(400).json({ error: 'Username, password and email are required' });
   }
 
   try {
     const existing_user = await pool.query(
-      'SELECT id FROM users WHERE username = $1',
-      [username]
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
+      [username, email]
     );
 
     if (existing_user.rows.length > 0) {
@@ -64,10 +64,10 @@ app.post('/api/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     const insert_user_result = await pool.query(
-      `INSERT INTO users (username, password_hash)
-       VALUES ($1, $2)
-       RETURNING id, username`,
-      [username, password_hash]
+      `INSERT INTO users (username, password_hash, email)
+       VALUES ($1, $2, $3)
+       RETURNING id, username, email`,
+      [username, password_hash, email]
     );
 
     res.status(201).json({

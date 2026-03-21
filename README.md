@@ -50,6 +50,18 @@ This repository contains the implementation of a stateful auction platform API b
 - `POST /api/auctions/:id/bids` – place a bid (requires `Authorization: Bearer <token>`)
 - `GET /api/auctions/:id/bids` – list bid history for an auction
 
+### Winner notification via email
+
+The worker now sends an email to the winner when an auction is marked `completed`.
+Required environment variables for SMTP:
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE` (true/false)
+- `SMTP_USER`
+- `SMTP_PASS`
+- `EMAIL_FROM`
+
+Add these to your Docker Compose / Kubernetes secret configuration before starting the worker.
 
 ## Prerequisites
 * **DigitalOcean Account** with a Read/Write Personal Access Token (PAT).

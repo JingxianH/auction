@@ -41,3 +41,7 @@ jobs:
           # 2. Force Kubernetes to pull the new 'latest' image we just pushed
           kubectl rollout restart deployment/api
           kubectl rollout restart deployment/worker
+          
+          # 3. Verify the rollout status
+          kubectl rollout status deployment/api --timeout=120s
+          kubectl rollout status deployment/worker --timeout=120s
