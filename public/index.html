@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auction Platform</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+
+    /* Nav */
+    nav { background: #1a73e8; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    nav h1 { font-size: 1.3rem; }
+    nav .nav-right { display: flex; gap: 12px; align-items: center; }
+    nav .nav-right span { font-size: 0.9rem; opacity: 0.9; }
+    nav button { background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+    nav button:hover { background: rgba(255,255,255,0.35); }
+
+    /* Layout */
+    .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 16px; }
+    .card h2 { margin-bottom: 16px; font-size: 1.15rem; color: #1a73e8; }
+
+    /* Forms */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #555; }
+    .form-group input, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .btn { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; }
+    .tab { padding: 10px 20px; background: #e8e8e8; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+    .tab:first-child { border-radius: 6px 0 0 6px; }
+    .tab:last-child { border-radius: 0 6px 6px 0; }
+    .tab.active { background: #1a73e8; color: #fff; }
+
+    /* Auth section */
+    .auth-container { display: flex; gap: 16px; justify-content: center; margin-top: 80px; }
+    .auth-container .card { width: 360px; }
+
+    /* Auctions grid */
+    .auction-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .auction-item { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px; cursor: pointer; transition: box-shadow 0.2s; }
+    .auction-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+    .auction-item h3 { font-size: 1rem; margin-bottom: 8px; }
+    .auction-item .meta { font-size: 0.8rem; color: #777; margin-bottom: 4px; }
+    .auction-item .price { font-size: 1.1rem; font-weight: 700; color: #28a745; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+    .badge-active { background: #d4edda; color: #155724; }
+    .badge-completed { background: #cce5ff; color: #004085; }
+    .badge-cancelled { background: #fff3cd; color: #856404; }
+
+    /* Auction detail */
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .detail-header h2 { margin-bottom: 4px; }
+    .bid-list { max-height: 250px; overflow-y: auto; }
+    .bid-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+
+    /* Buttons */
+    .btn-danger { background: #dc3545 !important; color: #fff !important; }
+    .btn-danger:hover { background: #c82333 !important; }
+    .btn-sm { padding: 6px 14px !important; font-size: 0.85rem !important; }
+
+    /* Messages */
+    .msg { padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 0.85rem; }
+    .msg-error { background: #f8d7da; color: #721c24; }
+    .msg-success { background: #d4edda; color: #155724; }
+
+    .hidden { display: none; }
+    .text-muted { color: #888; font-size: 0.85rem; }
+    .back-link { font-size: 0.85rem; color: #1a73e8; cursor: pointer; margin-bottom: 12px; display: inline-block; }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <h1>Auction Platform</h1>
+    <div class="nav-right">
+      <span id="nav-user" class="hidden" style="cursor:pointer;text-decoration:underline;" onclick="switchTab('profile')"></span>
+      <button id="nav-logout" class="hidden" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <!-- AUTH VIEW -->
+  <div id="auth-view" class="container">
+    <div class="auth-container">
+      <!-- Register -->
+      <div class="card">
+        <h2>Register</h2>
+        <div id="register-msg"></div>
+        <form onsubmit="register(event)">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="reg-username" required>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="reg-email" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="reg-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+      </div>
+
+      <!-- Login -->
+      <div class="card">
+        <h2>Login</h2>
+        <div id="login-msg"></div>
+        <form onsubmit="login(event)">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="login-username" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP VIEW -->
+  <div id="app-view" class="container hidden">
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('auctions')">Browse Auctions</button>
+      <button class="tab" onclick="switchTab('create')">Create Auction</button>
+      <button class="tab" onclick="switchTab('my')">My Auctions</button>
+      <button class="tab" onclick="switchTab('bids')">My Bids</button>
+      <button class="tab" onclick="switchTab('profile')">Profile</button>
+    </div>
+
+    <!-- Browse Auctions -->
+    <div id="tab-auctions">
+      <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center;">
+        <input type="text" id="search-input" placeholder="Search auctions..." style="flex:1; padding:8px 10px; border:1px solid #ddd; border-radius:4px;">
+        <select id="status-filter" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
+          <option value="">All</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadAuctions()">Search</button>
+      </div>
+      <div id="auctions-list" class="auction-list"></div>
+    </div>
+
+    <!-- Create Auction -->
+    <div id="tab-create" class="hidden">
+      <div class="card">
+        <h2>Create New Auction</h2>
+        <div id="create-msg"></div>
+        <form onsubmit="createAuction(event)">
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="auction-title" required>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="auction-desc"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Starting Price ($)</label>
+              <input type="number" id="auction-price" step="0.01" min="0.01" required>
+            </div>
+            <div class="form-group">
+              <label>End Time</label>
+              <input type="datetime-local" id="auction-end" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Create Auction</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- My Auctions -->
+    <div id="tab-my" class="hidden">
+      <div id="my-auctions-list" class="auction-list"></div>
+    </div>
+
+    <!-- My Bids -->
+    <div id="tab-bids" class="hidden">
+      <div class="card">
+        <h2>My Bid History</h2>
+        <div id="my-bids-list"></div>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div id="tab-profile" class="hidden">
+      <div class="card">
+        <h2>My Profile</h2>
+        <div id="profile-msg"></div>
+        <form onsubmit="updateProfile(event)">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="profile-username" disabled style="background:#f0f0f0;">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="profile-email" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Update Email</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Auction Detail (overlay) -->
+    <div id="auction-detail" class="hidden">
+      <span class="back-link" onclick="closeDetail()">&larr; Back to auctions</span>
+      <div class="card">
+        <div class="detail-header">
+          <div>
+            <h2 id="detail-title"></h2>
+            <p class="text-muted" id="detail-desc"></p>
+          </div>
+          <span id="detail-badge" class="badge"></span>
+        </div>
+        <div style="display:flex; gap:24px; margin-bottom:16px;">
+          <div><strong>Starting Price:</strong> <span id="detail-start-price"></span></div>
+          <div><strong>Current Bid:</strong> <span id="detail-highest" style="color:#28a745; font-weight:700;"></span></div>
+          <div><strong>Ends:</strong> <span id="detail-end"></span></div>
+        </div>
+        <div id="detail-winner" class="msg msg-success hidden"></div>
+
+        <!-- Seller actions (edit / cancel) -->
+        <div id="seller-actions" class="hidden" style="display:flex; gap:12px; margin-bottom:16px;">
+          <button class="btn btn-primary btn-sm" onclick="showEditAuction()">Edit Auction</button>
+          <button class="btn btn-danger btn-sm" onclick="cancelAuction()">Cancel Auction</button>
+        </div>
+
+        <!-- Edit Auction Form (hidden by default) -->
+        <div id="edit-auction-form" class="hidden card" style="background:#f8f9fa;">
+          <h2>Edit Auction</h2>
+          <div id="edit-msg"></div>
+          <form onsubmit="submitEditAuction(event)">
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" id="edit-title">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea id="edit-desc"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Starting Price ($)</label>
+                <input type="number" id="edit-price" step="0.01" min="0.01">
+              </div>
+              <div class="form-group">
+                <label>End Time</label>
+                <input type="datetime-local" id="edit-end">
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+              <button type="button" class="btn btn-sm" style="background:#ccc;" onclick="document.getElementById('edit-auction-form').classList.add('hidden')">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Place Bid -->
+        <div id="bid-section" class="card" style="background:#f8f9fa;">
+          <h2>Place a Bid</h2>
+          <div id="bid-msg"></div>
+          <form onsubmit="placeBid(event)" style="display:flex; gap:12px; align-items:flex-end;">
+            <div class="form-group" style="flex:1; margin-bottom:0;">
+              <label>Your Bid ($)</label>
+              <input type="number" id="bid-amount" step="0.01" min="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-success">Bid</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Bid History -->
+      <div class="card">
+        <h2>Bid History</h2>
+        <div id="bid-history" class="bid-list">
+          <p class="text-muted">No bids yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+    let token = localStorage.getItem('token');
+    let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+    let currentAuctionId = null;
+
+    // --- Init ---
+    function init() {
+      if (token && currentUser) {
+        showApp();
+      } else {
+        showAuth();
+      }
+    }
+
+    function showAuth() {
+      document.getElementById('auth-view').classList.remove('hidden');
+      document.getElementById('app-view').classList.add('hidden');
+      document.getElementById('nav-user').classList.add('hidden');
+      document.getElementById('nav-logout').classList.add('hidden');
+    }
+
+    function showApp() {
+      document.getElementById('auth-view').classList.add('hidden');
+      document.getElementById('app-view').classList.remove('hidden');
+      document.getElementById('nav-user').textContent = 'Logged in as ' + currentUser.username;
+      document.getElementById('nav-user').classList.remove('hidden');
+      document.getElementById('nav-logout').classList.remove('hidden');
+      loadAuctions();
+    }
+
+    function logout() {
+      token = null;
+      currentUser = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      showAuth();
+    }
+
+    // --- Helpers ---
+    function showMsg(id, text, isError) {
+      const el = document.getElementById(id);
+      el.innerHTML = '<div class="msg ' + (isError ? 'msg-error' : 'msg-success') + '">' + escapeHtml(text) + '</div>';
+      setTimeout(() => el.innerHTML = '', 5000);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function api(path, options = {}) {
+      const headers = { 'Content-Type': 'application/json', ...options.headers };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(API + path, { ...options, headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    // --- Auth ---
+    async function register(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: document.getElementById('reg-username').value,
+            email: document.getElementById('reg-email').value,
+            password: document.getElementById('reg-password').value,
+          }),
+        });
+        showMsg('register-msg', 'Registered! You can now login.', false);
+      } catch (err) {
+        showMsg('register-msg', err.message, true);
+      }
+    }
+
+    async function login(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: document.getElementById('login-username').value,
+            password: document.getElementById('login-password').value,
+          }),
+        });
+        token = data.token;
+        currentUser = data.user;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        showApp();
+      } catch (err) {
+        showMsg('login-msg', err.message, true);
+      }
+    }
+
+    // --- Tabs ---
+    const allTabs = ['auctions','create','my','bids','profile'];
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', allTabs[i] === name);
+      });
+      allTabs.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
+      document.getElementById('auction-detail').classList.add('hidden');
+
+      if (name === 'auctions') loadAuctions();
+      if (name === 'my') loadMyAuctions();
+      if (name === 'bids') loadMyBids();
+      if (name === 'profile') loadProfile();
+    }
+
+    // --- Auctions ---
+    async function loadAuctions() {
+      const search = document.getElementById('search-input').value;
+      const status = document.getElementById('status-filter').value;
+      let query = '/api/auctions?';
+      if (search) query += 'search=' + encodeURIComponent(search) + '&';
+      if (status) query += 'status=' + encodeURIComponent(status);
+      try {
+        const auctions = await api(query);
+        renderAuctions(auctions, 'auctions-list');
+      } catch (err) {
+        document.getElementById('auctions-list').innerHTML = '<p class="text-muted">Failed to load auctions.</p>';
+      }
+    }
+
+    async function loadMyAuctions() {
+      try {
+        const auctions = await api('/api/auctions');
+        const mine = auctions.filter(a => a.creator_id === currentUser.id);
+        renderAuctions(mine, 'my-auctions-list');
+        if (mine.length === 0) {
+          document.getElementById('my-auctions-list').innerHTML = '<p class="text-muted">You haven\'t created any auctions yet.</p>';
+        }
+      } catch (err) {
+        document.getElementById('my-auctions-list').innerHTML = '<p class="text-muted">Failed to load.</p>';
+      }
+    }
+
+    function renderAuctions(auctions, containerId) {
+      const container = document.getElementById(containerId);
+      if (auctions.length === 0) {
+        container.innerHTML = '<p class="text-muted">No auctions found.</p>';
+        return;
+      }
+      container.innerHTML = auctions.map(a => {
+        const statusClass = a.status === 'active' ? 'badge-active' : a.status === 'completed' ? 'badge-completed' : 'badge-expired';
+        const endDate = new Date(a.end_time).toLocaleString();
+        const bid = a.highest_bid ? '$' + parseFloat(a.highest_bid).toFixed(2) : 'No bids';
+        return '<div class="auction-item" onclick="openAuction(' + a.id + ')">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+            '<h3>' + escapeHtml(a.title) + '</h3>' +
+            '<span class="badge ' + statusClass + '">' + escapeHtml(a.status) + '</span>' +
+          '</div>' +
+          '<p class="meta">Ends: ' + escapeHtml(endDate) + '</p>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span class="text-muted">Start: $' + parseFloat(a.starting_price).toFixed(2) + '</span>' +
+            '<span class="price">' + escapeHtml(bid) + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // --- Auction Detail ---
+    async function openAuction(id) {
+      currentAuctionId = id;
+      allTabs.forEach(t => document.getElementById('tab-' + t).classList.add('hidden'));
+      document.getElementById('auction-detail').classList.remove('hidden');
+
+      try {
+        const a = await api('/api/auctions/' + id);
+        document.getElementById('detail-title').textContent = a.title;
+        document.getElementById('detail-desc').textContent = a.description || 'No description';
+        document.getElementById('detail-start-price').textContent = '$' + parseFloat(a.starting_price).toFixed(2);
+        document.getElementById('detail-highest').textContent = a.highest_bid ? '$' + parseFloat(a.highest_bid).toFixed(2) : 'No bids';
+        document.getElementById('detail-end').textContent = new Date(a.end_time).toLocaleString();
+
+        const badge = document.getElementById('detail-badge');
+        badge.textContent = a.status;
+        badge.className = 'badge badge-' + a.status;
+
+        // Winner info
+        const winnerEl = document.getElementById('detail-winner');
+        if (a.status === 'completed' && a.winner_id) {
+          winnerEl.classList.remove('hidden');
+          if (a.winner_id === currentUser.id) {
+            winnerEl.textContent = 'Congratulations! You won this auction!';
+          } else if (a.creator_id === currentUser.id) {
+            winnerEl.innerHTML = 'Auction completed — Winner: <strong>' + escapeHtml(a.winner_username || '') + '</strong>' +
+              (a.winner_email ? ' (' + escapeHtml(a.winner_email) + ')' : '');
+          } else {
+            winnerEl.textContent = 'This auction has been won.';
+          }
+        } else if (a.status === 'cancelled') {
+          winnerEl.classList.remove('hidden');
+          winnerEl.textContent = 'This auction was cancelled.';
+          winnerEl.className = 'msg msg-error';
+        } else {
+          winnerEl.classList.add('hidden');
+          winnerEl.className = 'msg msg-success hidden';
+        }
+
+        // Seller actions (edit / cancel) — only for the creator on active auctions
+        const sellerActions = document.getElementById('seller-actions');
+        const editForm = document.getElementById('edit-auction-form');
+        editForm.classList.add('hidden');
+        if (a.creator_id === currentUser.id && a.status === 'active') {
+          sellerActions.classList.remove('hidden');
+          sellerActions.style.display = 'flex';
+          // Pre-fill edit form
+          document.getElementById('edit-title').value = a.title;
+          document.getElementById('edit-desc').value = a.description || '';
+          document.getElementById('edit-price').value = a.starting_price;
+          document.getElementById('edit-end').value = new Date(a.end_time).toISOString().slice(0, 16);
+        } else {
+          sellerActions.classList.add('hidden');
+          sellerActions.style.display = 'none';
+        }
+
+        // Show/hide bid section
+        const bidSection = document.getElementById('bid-section');
+        if (a.status === 'active' && new Date(a.end_time) > new Date()) {
+          bidSection.classList.remove('hidden');
+        } else {
+          bidSection.classList.add('hidden');
+        }
+
+        // Load bid history
+        const bids = await api('/api/auctions/' + id + '/bids');
+        const historyEl = document.getElementById('bid-history');
+        if (bids.length === 0) {
+          historyEl.innerHTML = '<p class="text-muted">No bids yet.</p>';
+        } else {
+          historyEl.innerHTML = bids.map(b =>
+            '<div class="bid-row">' +
+              '<span>' + escapeHtml(b.username) + '</span>' +
+              '<span>$' + parseFloat(b.amount).toFixed(2) + '</span>' +
+              '<span class="text-muted">' + new Date(b.created_at).toLocaleString() + '</span>' +
+            '</div>'
+          ).join('');
+        }
+      } catch (err) {
+        document.getElementById('detail-title').textContent = 'Error loading auction';
+      }
+    }
+
+    function closeDetail() {
+      document.getElementById('auction-detail').classList.add('hidden');
+      const activeTab = document.querySelector('.tab.active');
+      const tabName = activeTab ? allTabs[Array.from(document.querySelectorAll('.tab')).indexOf(activeTab)] : 'auctions';
+      document.getElementById('tab-' + tabName).classList.remove('hidden');
+      if (tabName === 'auctions') loadAuctions();
+    }
+
+    // --- My Bids ---
+    async function loadMyBids() {
+      try {
+        const bids = await api('/api/me/bids');
+        const container = document.getElementById('my-bids-list');
+        if (bids.length === 0) {
+          container.innerHTML = '<p class="text-muted">You haven\'t placed any bids yet.</p>';
+          return;
+        }
+        container.innerHTML = '<table style="width:100%; border-collapse:collapse; font-size:0.9rem;">' +
+          '<thead><tr style="border-bottom:2px solid #ddd; text-align:left;">' +
+            '<th style="padding:8px;">Auction</th>' +
+            '<th style="padding:8px;">Your Bid</th>' +
+            '<th style="padding:8px;">Status</th>' +
+            '<th style="padding:8px;">Result</th>' +
+            '<th style="padding:8px;">Date</th>' +
+          '</tr></thead><tbody>' +
+          bids.map(b => {
+            const statusClass = b.auction_status === 'active' ? 'badge-active' : b.auction_status === 'completed' ? 'badge-completed' : 'badge-expired';
+            let result = '-';
+            if (b.auction_status === 'completed') {
+              result = b.winner_id === currentUser.id
+                ? '<span style="color:#28a745; font-weight:600;">Won!</span>'
+                : '<span style="color:#dc3545;">Outbid</span>';
+            }
+            return '<tr style="border-bottom:1px solid #eee; cursor:pointer;" onclick="openAuction(' + b.auction_id + ')">' +
+              '<td style="padding:8px;">' + escapeHtml(b.auction_title) + '</td>' +
+              '<td style="padding:8px; font-weight:600;">$' + parseFloat(b.amount).toFixed(2) + '</td>' +
+              '<td style="padding:8px;"><span class="badge ' + statusClass + '">' + escapeHtml(b.auction_status) + '</span></td>' +
+              '<td style="padding:8px;">' + result + '</td>' +
+              '<td style="padding:8px; color:#888;">' + new Date(b.created_at).toLocaleString() + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table>';
+      } catch (err) {
+        document.getElementById('my-bids-list').innerHTML = '<p class="text-muted">Failed to load bids.</p>';
+      }
+    }
+
+    // --- Create Auction ---
+    async function createAuction(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/auctions', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.getElementById('auction-title').value,
+            description: document.getElementById('auction-desc').value,
+            starting_price: parseFloat(document.getElementById('auction-price').value),
+            end_time: new Date(document.getElementById('auction-end').value).toISOString(),
+          }),
+        });
+        showMsg('create-msg', 'Auction created successfully! (ID: ' + data.id + ')', false);
+        document.getElementById('auction-title').value = '';
+        document.getElementById('auction-desc').value = '';
+        document.getElementById('auction-price').value = '';
+        document.getElementById('auction-end').value = '';
+      } catch (err) {
+        showMsg('create-msg', err.message, true);
+      }
+    }
+
+    // --- Place Bid ---
+    async function placeBid(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/auctions/' + currentAuctionId + '/bids', {
+          method: 'POST',
+          body: JSON.stringify({
+            amount: parseFloat(document.getElementById('bid-amount').value),
+          }),
+        });
+        showMsg('bid-msg', 'Bid placed successfully!', false);
+        document.getElementById('bid-amount').value = '';
+        openAuction(currentAuctionId);
+      } catch (err) {
+        showMsg('bid-msg', err.message, true);
+      }
+    }
+
+    // --- Profile ---
+    async function loadProfile() {
+      try {
+        const user = await api('/api/me');
+        document.getElementById('profile-username').value = user.username;
+        document.getElementById('profile-email').value = user.email;
+        document.getElementById('profile-msg').innerHTML = '';
+      } catch (err) {
+        showMsg('profile-msg', err.message, true);
+      }
+    }
+
+    async function updateProfile(e) {
+      e.preventDefault();
+      try {
+        const data = await api('/api/me', {
+          method: 'PUT',
+          body: JSON.stringify({ email: document.getElementById('profile-email').value }),
+        });
+        showMsg('profile-msg', 'Email updated to ' + escapeHtml(data.email), false);
+      } catch (err) {
+        showMsg('profile-msg', err.message, true);
+      }
+    }
+
+    // --- Edit Auction ---
+    function showEditAuction() {
+      document.getElementById('edit-auction-form').classList.toggle('hidden');
+      document.getElementById('edit-msg').innerHTML = '';
+    }
+
+    async function submitEditAuction(e) {
+      e.preventDefault();
+      try {
+        await api('/api/auctions/' + currentAuctionId, {
+          method: 'PUT',
+          body: JSON.stringify({
+            title: document.getElementById('edit-title').value,
+            description: document.getElementById('edit-desc').value,
+            starting_price: parseFloat(document.getElementById('edit-price').value),
+            end_time: new Date(document.getElementById('edit-end').value).toISOString(),
+          }),
+        });
+        showMsg('edit-msg', 'Auction updated!', false);
+        openAuction(currentAuctionId);
+      } catch (err) {
+        showMsg('edit-msg', err.message, true);
+      }
+    }
+
+    // --- Cancel Auction ---
+    async function cancelAuction() {
+      if (!confirm('Are you sure you want to cancel this auction?')) return;
+      try {
+        await api('/api/auctions/' + currentAuctionId + '/cancel', { method: 'POST' });
+        openAuction(currentAuctionId);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // --- Start ---
+    init();
+  </script>
+</body>
+</html>

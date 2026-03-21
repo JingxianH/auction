@@ -90,6 +90,20 @@ spec:
           valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_PASSWORD } }
         - name: DB_NAME
           valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_DB } }
+        - name: JWT_SECRET
+          valueFrom: { secretKeyRef: { name: app-secrets, key: JWT_SECRET } }
+        - name: SMTP_HOST
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_HOST } }
+        - name: SMTP_PORT
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_PORT } }
+        - name: SMTP_SECURE
+          value: "false"
+        - name: SMTP_USER
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_USER } }
+        - name: SMTP_PASS
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_PASS } }
+        - name: EMAIL_FROM
+          valueFrom: { secretKeyRef: { name: app-secrets, key: EMAIL_FROM } }
         ports:
         - containerPort: 3000
         livenessProbe:
@@ -151,3 +165,17 @@ spec:
           valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_PASSWORD } }
         - name: DB_NAME
           valueFrom: { secretKeyRef: { name: db-secrets, key: POSTGRES_DB } }
+        - name: SMTP_HOST
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_HOST } }
+        - name: SMTP_PORT
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_PORT } }
+        - name: SMTP_SECURE
+          value: "false"
+        - name: SMTP_USER
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_USER } }
+        - name: SMTP_PASS
+          valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_PASS } }
+        - name: EMAIL_FROM
+          valueFrom: { secretKeyRef: { name: app-secrets, key: EMAIL_FROM } }
+        - name: WORKER_INTERVAL_MS
+          value: "30000"

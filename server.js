@@ -3,10 +3,21 @@ const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken'); // to create and check login tokens
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Email transporter for bid notifications
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.example.com',
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: process.env.SMTP_USER
+    ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    : undefined,
+});
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
@@ -47,16 +58,16 @@ function authenticate_token(req, res, next) {
 }
 
 app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body; // username and password
+  const { username, password, email } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
+  if (!username || !password || !email) {
+    return res.status(400).json({ error: 'Username, password and email are required' });
   }
 
   try {
     const existing_user = await pool.query(
-      'SELECT id FROM users WHERE username = $1',
-      [username]
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
+      [username, email]
     );
 
     if (existing_user.rows.length > 0) {
@@ -66,10 +77,10 @@ app.post('/api/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     const insert_user_result = await pool.query(
-      `INSERT INTO users (username, password_hash)
-       VALUES ($1, $2)
-       RETURNING id, username`,
-      [username, password_hash]
+      `INSERT INTO users (username, password_hash, email)
+       VALUES ($1, $2, $3)
+       RETURNING id, username, email`,
+      [username, password_hash, email]
     );
 
     res.status(201).json({
@@ -201,13 +212,15 @@ app.get('/api/auctions/:id', async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT a.*, b.highest_bid
+        SELECT a.*, b.highest_bid,
+               w.username AS winner_username, w.email AS winner_email
         FROM auctions a
         LEFT JOIN (
           SELECT auction_id, MAX(amount) AS highest_bid
           FROM bids
           GROUP BY auction_id
         ) b ON a.id = b.auction_id
+        LEFT JOIN users w ON w.id = a.winner_id
         WHERE a.id = $1
       `,
       [auctionId]
@@ -220,6 +233,105 @@ app.get('/api/auctions/:id', async (req, res) => {
     res.status(200).json(result.rows[0]);
   } catch (err) {
     console.error('Error fetching auction:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Edit an auction (only by creator, only if active)
+app.put('/api/auctions/:id', authenticate_token, async (req, res) => {
+  const auctionId = parseInt(req.params.id, 10);
+  const { title, description, starting_price, end_time } = req.body;
+
+  if (Number.isNaN(auctionId)) {
+    return res.status(400).json({ error: 'Invalid auction id' });
+  }
+
+  try {
+    const auctionResult = await pool.query(
+      'SELECT id, creator_id, status FROM auctions WHERE id = $1',
+      [auctionId]
+    );
+
+    if (auctionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    const auction = auctionResult.rows[0];
+    if (auction.creator_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the auction creator can edit this auction' });
+    }
+    if (auction.status !== 'active') {
+      return res.status(400).json({ error: 'Only active auctions can be edited' });
+    }
+
+    // Check if there are existing bids (can't change starting_price if bids exist)
+    const bidCheck = await pool.query('SELECT COUNT(*) FROM bids WHERE auction_id = $1', [auctionId]);
+    const hasBids = parseInt(bidCheck.rows[0].count) > 0;
+
+    if (hasBids && starting_price !== undefined) {
+      return res.status(400).json({ error: 'Cannot change starting price when bids exist' });
+    }
+
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (title !== undefined) { updates.push(`title = $${idx++}`); values.push(title); }
+    if (description !== undefined) { updates.push(`description = $${idx++}`); values.push(description); }
+    if (starting_price !== undefined) { updates.push(`starting_price = $${idx++}`); values.push(starting_price); }
+    if (end_time !== undefined) { updates.push(`end_time = $${idx++}`); values.push(end_time); }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(auctionId);
+    const result = await pool.query(
+      `UPDATE auctions SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error editing auction:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Cancel an auction (only by creator, only if active)
+app.post('/api/auctions/:id/cancel', authenticate_token, async (req, res) => {
+  const auctionId = parseInt(req.params.id, 10);
+
+  if (Number.isNaN(auctionId)) {
+    return res.status(400).json({ error: 'Invalid auction id' });
+  }
+
+  try {
+    const auctionResult = await pool.query(
+      'SELECT id, creator_id, status FROM auctions WHERE id = $1',
+      [auctionId]
+    );
+
+    if (auctionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    const auction = auctionResult.rows[0];
+    if (auction.creator_id !== req.user.id) {
+      return res.status(403).json({ error: 'Only the auction creator can cancel this auction' });
+    }
+    if (auction.status !== 'active') {
+      return res.status(400).json({ error: 'Only active auctions can be cancelled' });
+    }
+
+    await pool.query(
+      "UPDATE auctions SET status = 'cancelled' WHERE id = $1",
+      [auctionId]
+    );
+
+    res.status(200).json({ message: 'Auction cancelled successfully' });
+  } catch (err) {
+    console.error('Error cancelling auction:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -326,6 +438,33 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
 
     console.log(`User ${userId} placed a bid of ${amount} on auction ${auctionId}`);
 
+    // Send bid notification email to the auction creator (fire-and-forget)
+    (async () => {
+      try {
+        const creatorResult = await pool.query(
+          `SELECT u.email, u.username FROM users u
+           JOIN auctions a ON a.creator_id = u.id
+           WHERE a.id = $1`,
+          [auctionId]
+        );
+        const creator = creatorResult.rows[0];
+        if (creator && creator.email) {
+          const bidderResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+          const bidderName = bidderResult.rows[0]?.username || 'Someone';
+          const from = process.env.EMAIL_FROM || 'no-reply@auction.example.com';
+          await transporter.sendMail({
+            from,
+            to: creator.email,
+            subject: `New bid on your auction #${auctionId}`,
+            text: `Hi ${creator.username},\n\n${bidderName} placed a bid of $${amount} on your auction #${auctionId}.\n\nLog in to view the latest activity.\n`,
+          });
+          console.log(`Bid notification sent to seller ${creator.email} for auction ${auctionId}`);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send bid notification to seller:', emailErr);
+      }
+    })();
+
     res.status(201).json({
       message: 'Bid placed successfully',
       bid: insertResult.rows[0],
@@ -336,6 +475,71 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();
+  }
+});
+
+// Get current user profile
+app.get('/api/me', authenticate_token, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, username, email FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching profile:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update current user profile (email)
+app.put('/api/me', authenticate_token, async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    // Check if email already used by another user
+    const existing = await pool.query(
+      'SELECT id FROM users WHERE email = $1 AND id != $2',
+      [email, req.user.id]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Email is already in use by another account' });
+    }
+
+    const result = await pool.query(
+      'UPDATE users SET email = $1 WHERE id = $2 RETURNING id, username, email',
+      [email, req.user.id]
+    );
+    res.status(200).json({ message: 'Profile updated', user: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating profile:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all bids placed by the logged-in user
+app.get('/api/me/bids', authenticate_token, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT b.id, b.amount, b.created_at, b.auction_id,
+              a.title AS auction_title, a.status AS auction_status, a.winner_id
+       FROM bids b
+       JOIN auctions a ON a.id = b.auction_id
+       WHERE b.user_id = $1
+       ORDER BY b.created_at DESC`,
+      [req.user.id]
+    );
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error fetching user bids:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
