@@ -5,10 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL
 );
 
--- Migration: add email column if table was created from older schema
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255) DEFAULT '';
 
--- Define the custom enum for auction status (enforces valid status values)
 DO $$ BEGIN
   CREATE TYPE auction_status AS ENUM ('active', 'completed', 'cancelled', 'expired');
 EXCEPTION WHEN duplicate_object THEN NULL;
