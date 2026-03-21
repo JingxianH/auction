@@ -98,6 +98,13 @@ spec:
           valueFrom: { secretKeyRef: { name: app-secrets, key: EMAIL_FROM } }
         ports:
         - containerPort: 3000
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
         livenessProbe:
           httpGet:
             path: /health
@@ -163,3 +170,24 @@ spec:
           valueFrom: { secretKeyRef: { name: app-secrets, key: EMAIL_FROM } }
         - name: WORKER_INTERVAL_MS
           value: "30000"
+
+---
+# 7. API Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

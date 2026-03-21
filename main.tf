@@ -41,6 +41,9 @@ resource "digitalocean_kubernetes_cluster" "auction_cluster" {
     name       = "budget-pool"
     size       = "s-2vcpu-2gb"
     node_count = 1
+    auto_scale = true
+    min_nodes  = 1
+    max_nodes  = 3
   }
 }
 
