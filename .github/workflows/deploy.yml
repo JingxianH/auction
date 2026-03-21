@@ -45,12 +45,12 @@ jobs:
           # 1. Ensure app-secrets exists (create or update from GitHub Secrets)
           kubectl delete secret app-secrets --ignore-not-found
           kubectl create secret generic app-secrets \
-            --from-literal=JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --from-literal=SMTP_HOST=${{ secrets.SMTP_HOST }} \
-            --from-literal=SMTP_PORT=${{ secrets.SMTP_PORT }} \
-            --from-literal=SMTP_USER=${{ secrets.SMTP_USER }} \
-            --from-literal=SMTP_PASS=${{ secrets.SMTP_PASS }} \
-            --from-literal=EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --from-literal=SMTP_HOST="$SMTP_HOST" \
+            --from-literal=SMTP_PORT="$SMTP_PORT" \
+            --from-literal=SMTP_USER="$SMTP_USER" \
+            --from-literal=SMTP_PASS="$SMTP_PASS" \
+            --from-literal=EMAIL_FROM="$EMAIL_FROM"
 
           # 2. Apply your Kubernetes architecture
           kubectl apply -f k8s-deploy.yaml -f backup-cronjob.yaml
