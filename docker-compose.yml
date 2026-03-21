@@ -13,11 +13,7 @@ services:
       - DB_PORT=5432
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_SECURE=${SMTP_SECURE}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
+      - RESEND_API_KEY=${RESEND_API_KEY}
       - EMAIL_FROM=${EMAIL_FROM}
     depends_on:
       db:
@@ -31,11 +27,7 @@ services:
       - DB_HOST=db
       - DB_NAME=${POSTGRES_DB}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_SECURE=${SMTP_SECURE}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
+      - RESEND_API_KEY=${RESEND_API_KEY}
       - EMAIL_FROM=${EMAIL_FROM}
       - WORKER_INTERVAL_MS=${WORKER_INTERVAL_MS}
     depends_on:

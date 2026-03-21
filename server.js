@@ -3,21 +3,15 @@ const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken'); // to create and check login tokens
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Email transporter for bid notifications
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.example.com',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: process.env.SMTP_USER
-    ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-    : undefined,
-});
+// Email client for bid notifications (uses HTTPS, no SMTP port needed)
+const resend = new Resend(process.env.RESEND_API_KEY);
+const EMAIL_FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
@@ -451,9 +445,8 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
         if (creator && creator.email) {
           const bidderResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
           const bidderName = bidderResult.rows[0]?.username || 'Someone';
-          const from = process.env.EMAIL_FROM || 'no-reply@auction.example.com';
-          await transporter.sendMail({
-            from,
+          await resend.emails.send({
+            from: EMAIL_FROM,
             to: creator.email,
             subject: `New bid on your auction #${auctionId}`,
             text: `Hi ${creator.username},\n\n${bidderName} placed a bid of $${amount} on your auction #${auctionId}.\n\nLog in to view the latest activity.\n`,

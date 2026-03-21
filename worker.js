@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
@@ -9,81 +9,53 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
 });
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.example.com',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: process.env.SMTP_USER
-    ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      }
-    : undefined,
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+const EMAIL_FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 
 async function sendWinnerEmail({ email, username, auctionId, amount }) {
   if (!email) {
     throw new Error('No recipient email provided');
   }
 
-  const from = process.env.EMAIL_FROM || 'no-reply@auction.example.com';
-  const subject = `Congratulations! You won auction ${auctionId}`;
-  const text = `Hi ${username || 'bidder'},\n\n` +
-    `You have won auction #${auctionId} with a bid of $${amount}.\n` +
-    'Please log in to your account to view payment and shipping details.\n\n' +
-    'Thanks for participating!\n';
-
-  await transporter.sendMail({
-    from,
+  await resend.emails.send({
+    from: EMAIL_FROM,
     to: email,
-    subject,
-    text,
+    subject: `Congratulations! You won auction ${auctionId}`,
+    text: `Hi ${username || 'bidder'},\n\nYou have won auction #${auctionId} with a bid of $${amount}.\nPlease log in to your account to view payment and shipping details.\n\nThanks for participating!\n`,
   });
 }
 
 async function sendSellerEmail({ email, username, auctionId, amount, winnerUsername }) {
   if (!email) return;
 
-  const from = process.env.EMAIL_FROM || 'no-reply@auction.example.com';
-  const subject = `Your auction #${auctionId} has been completed!`;
-  const text = `Hi ${username || 'seller'},\n\n` +
-    `Your auction #${auctionId} has been completed.\n` +
-    `Winner: ${winnerUsername}\n` +
-    `Winning bid: $${amount}\n\n` +
-    'Please log in to your account to view the winner details and arrange next steps.\n\n' +
-    'Thanks for using Auction Platform!\n';
-
-  await transporter.sendMail({ from, to: email, subject, text });
+  await resend.emails.send({
+    from: EMAIL_FROM,
+    to: email,
+    subject: `Your auction #${auctionId} has been completed!`,
+    text: `Hi ${username || 'seller'},\n\nYour auction #${auctionId} has been completed.\nWinner: ${winnerUsername}\nWinning bid: $${amount}\n\nPlease log in to your account to view the winner details and arrange next steps.\n\nThanks for using Auction Platform!\n`,
+  });
 }
 
 async function sendLoserEmail({ email, username, auctionId, auctionTitle, winningAmount }) {
   if (!email) return;
 
-  const from = process.env.EMAIL_FROM || 'no-reply@auction.example.com';
-  const subject = `Auction "${auctionTitle}" (#${auctionId}) has ended`;
-  const text = `Hi ${username || 'bidder'},\n\n` +
-    `The auction "${auctionTitle}" (#${auctionId}) you bid on has ended.\n` +
-    `Unfortunately, your bid was not the winning bid.\n` +
-    `The winning bid was $${winningAmount}.\n\n` +
-    'Check out other active auctions on the platform!\n\n' +
-    'Thanks for participating!\n';
-
-  await transporter.sendMail({ from, to: email, subject, text });
+  await resend.emails.send({
+    from: EMAIL_FROM,
+    to: email,
+    subject: `Auction "${auctionTitle}" (#${auctionId}) has ended`,
+    text: `Hi ${username || 'bidder'},\n\nThe auction "${auctionTitle}" (#${auctionId}) you bid on has ended.\nUnfortunately, your bid was not the winning bid.\nThe winning bid was $${winningAmount}.\n\nCheck out other active auctions on the platform!\n\nThanks for participating!\n`,
+  });
 }
 
 async function sendExpiredNoBidsEmail({ email, username, auctionId, auctionTitle, role }) {
   if (!email) return;
 
-  const from = process.env.EMAIL_FROM || 'no-reply@auction.example.com';
-  const subject = `Auction "${auctionTitle}" (#${auctionId}) expired with no bids`;
-  const text = `Hi ${username || 'user'},\n\n` +
-    `The auction "${auctionTitle}" (#${auctionId}) has expired without receiving any bids.\n` +
-    (role === 'seller'
-      ? 'You may create a new auction if you wish to relist the item.\n\n'
-      : 'Check out other active auctions on the platform!\n\n') +
-    'Thanks for using Auction Platform!\n';
-
-  await transporter.sendMail({ from, to: email, subject, text });
+  await resend.emails.send({
+    from: EMAIL_FROM,
+    to: email,
+    subject: `Auction "${auctionTitle}" (#${auctionId}) expired with no bids`,
+    text: `Hi ${username || 'user'},\n\nThe auction "${auctionTitle}" (#${auctionId}) has expired without receiving any bids.\n${role === 'seller' ? 'You may create a new auction if you wish to relist the item.\n\n' : 'Check out other active auctions on the platform!\n\n'}Thanks for using Auction Platform!\n`,
+  });
 }
 
 async function processExpiredAuctions() {
