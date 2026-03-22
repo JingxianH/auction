@@ -48,6 +48,48 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+async function canUserAccessAuction(auctionId, userId) {
+  const result = await pool.query(
+    `
+      SELECT
+        a.id,
+        a.creator_id,
+        a.is_private,
+        EXISTS (
+          SELECT 1
+          FROM followers f
+          WHERE f.follower_id = $2
+            AND f.following_id = a.creator_id
+        ) AS is_follower
+      FROM auctions a
+      WHERE a.id = $1
+    `,
+    [auctionId, userId]
+  );
+
+  if (result.rows.length === 0) {
+    return {
+      exists: false,
+      allowed: false,
+      auction: null
+    };
+  }
+
+  const auction = result.rows[0];
+
+  const allowed =
+    !auction.is_private ||
+    auction.creator_id === userId ||
+    auction.is_follower;
+
+  return {
+    exists: true,
+    allowed,
+    auction
+  };
+}
+
 // ---------------------------------------------------------------------------
 
 // Email client for bid notifications (uses HTTPS, no SMTP port needed)
@@ -105,6 +147,30 @@ function authenticate_token(req, res, next) {
   } catch (error) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
+}
+
+function optional_authenticate_token(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    req.user = null;
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  
+  if (!token) {
+    req.user = null;
+    return next();}
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      req.user = null;
+      return next();
+    }
+    req.user = user;
+    next();
+  });
 }
 
 app.post('/api/register', async (req, res) => {
