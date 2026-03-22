@@ -23,12 +23,16 @@ jobs:
         env:
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
           ENABLE_MONITOR_ALERTS: ${{ secrets.ENABLE_MONITOR_ALERTS || 'false' }}
+          CREATE_BACKUP_BUCKET: ${{ secrets.CREATE_BACKUP_BUCKET || 'false' }}
+          BACKUP_BUCKET_NAME: ${{ secrets.BACKUP_BUCKET_NAME }}
         run: |
           terraform apply -auto-approve -input=false \
             -var="spaces_access_id=${{ secrets.SPACES_ACCESS_ID }}" \
             -var="spaces_secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
             -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
-            -var="enable_monitor_alerts=$ENABLE_MONITOR_ALERTS"
+            -var="enable_monitor_alerts=$ENABLE_MONITOR_ALERTS" \
+            -var="create_backup_bucket=$CREATE_BACKUP_BUCKET" \
+            -var="backup_bucket_name=$BACKUP_BUCKET_NAME"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2

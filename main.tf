@@ -41,6 +41,18 @@ variable "cluster_name" {
   default     = "auction-cluster"
 }
 
+variable "create_backup_bucket" {
+  description = "Create a new Spaces bucket for backups. Keep false in CI to reuse an existing bucket."
+  type        = bool
+  default     = false
+}
+
+variable "backup_bucket_name" {
+  description = "Existing backup bucket name to reuse, or desired name when creating a new bucket"
+  type        = string
+  default     = ""
+}
+
 
 provider "digitalocean" {
   # Terraform will still automatically use DIGITALOCEAN_TOKEN from your environment for the cluster
@@ -53,16 +65,29 @@ data "digitalocean_kubernetes_cluster" "auction_cluster" {
   name = var.cluster_name
 }
 
-# 2. Generate a random string (Bucket names must be globally unique across all DigitalOcean users)
+# 2. Generate a random string only when creating a bucket without an explicit name
 resource "random_id" "bucket_suffix" {
+  count       = var.create_backup_bucket && trimspace(var.backup_bucket_name) == "" ? 1 : 0
   byte_length = 4
 }
 
-# 3. The DigitalOcean Space (Backup Bucket)
+# 3a. Create backup bucket only when explicitly enabled
 resource "digitalocean_spaces_bucket" "auction_backups" {
-  name   = "auction-backups-${random_id.bucket_suffix.hex}"
+  count  = var.create_backup_bucket ? 1 : 0
+  name   = trimspace(var.backup_bucket_name) != "" ? var.backup_bucket_name : "auction-backups-${random_id.bucket_suffix[0].hex}"
   region = "tor1"
   acl    = "private"
+}
+
+# 3b. Reuse existing backup bucket by name (default path for CI)
+data "digitalocean_spaces_bucket" "auction_backups" {
+  count  = var.create_backup_bucket || trimspace(var.backup_bucket_name) == "" ? 0 : 1
+  name   = var.backup_bucket_name
+  region = "tor1"
+}
+
+locals {
+  backup_bucket_name = var.create_backup_bucket ? digitalocean_spaces_bucket.auction_backups[0].name : (trimspace(var.backup_bucket_name) != "" ? data.digitalocean_spaces_bucket.auction_backups[0].name : "")
 }
 
 # Output the required variables so you can easily copy them into your K8s secrets
@@ -71,7 +96,7 @@ output "cluster_id" {
 }
 
 output "backup_bucket_name" {
-  value = digitalocean_spaces_bucket.auction_backups.name
+  value = local.backup_bucket_name
 }
 
 # ---------------------------------------------------------------------------
