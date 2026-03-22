@@ -658,10 +658,27 @@ app.put('/api/me', authenticate_token, async (req, res) => {
 app.get('/api/me/bids', authenticate_token, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT b.id, b.amount, b.created_at, b.auction_id,
-              a.title AS auction_title, a.status AS auction_status, a.winner_id
+      `WITH highest_bids AS (
+         SELECT auction_id, MAX(amount) AS highest_bid
+         FROM bids
+         GROUP BY auction_id
+       )
+       SELECT
+         b.id,
+         b.amount,
+         b.created_at,
+         b.auction_id,
+         a.title AS auction_title,
+         a.status AS auction_status,
+         a.winner_id,
+         hb.highest_bid,
+         CASE
+           WHEN a.status = 'active' AND b.amount = hb.highest_bid THEN true
+           ELSE false
+         END AS is_winning
        FROM bids b
        JOIN auctions a ON a.id = b.auction_id
+       JOIN highest_bids hb ON hb.auction_id = b.auction_id
        WHERE b.user_id = $1
        ORDER BY b.created_at DESC`,
       [req.user.id]
