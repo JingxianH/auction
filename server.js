@@ -131,6 +131,87 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+app.get('/api/users/me', authenticate_token, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      'SELECT id, username FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT 
+          a.id,
+          a.title,
+          a.description,
+          a.starting_price,
+          a.end_time,
+          a.status,
+          a.creator_id,
+          a.winner_id,
+          MAX(b.amount) AS highest_bid
+        FROM auctions a
+        LEFT JOIN bids b ON a.id = b.auction_id
+        WHERE a.creator_id = $1
+        GROUP BY a.id
+        ORDER BY a.end_time ASC
+      `,
+      [userId]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error getting user auctions:', error);
+    res.status(500).json({ error:'Internal server error' });
+  }
+});
+
+app.get('/api/users/me/bids', authenticate_token, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          b.id,
+          b.amount,
+          b.created_at,
+          b.auction_id,
+          a.title,
+          a.status,
+          a.end_time
+        FROM bids b
+        JOIN auctions a ON a.id = b.auction_id
+        WHERE b.user_id = $1
+        ORDER BY b.created_at DESC
+      `,
+      [userId]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error getting user bids:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.post('/api/auctions', authenticate_token, async (req, res) => {
   const { title, description, starting_price, end_time } = req.body;
   const creator_id = req.user.id; // get creator id from token
