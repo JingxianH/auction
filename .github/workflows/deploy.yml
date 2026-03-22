@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -11,6 +12,21 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply (Cluster + Spaces + Monitoring Alerts)
+        env:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var="spaces_access_id=${{ secrets.SPACES_ACCESS_ID }}" \
+            -var="spaces_secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
