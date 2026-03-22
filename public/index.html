@@ -846,10 +846,18 @@
           bids.map(b => {
             const statusClass = b.auction_status === 'active' ? 'badge-active' : b.auction_status === 'completed' ? 'badge-completed' : 'badge-expired';
             let result = '-';
-            if (b.auction_status === 'completed') {
+            if (b.auction_status === 'active') {
+              result = b.is_winning
+                ? '<span style="color:#28a745; font-weight:600;">Winning</span>'
+                : '<span style="color:#dc3545;">Outbid</span>';
+            } else if (b.auction_status === 'completed') {
               result = b.winner_id === currentUser.id
                 ? '<span style="color:#28a745; font-weight:600;">Won!</span>'
                 : '<span style="color:#dc3545;">Outbid</span>';
+            } else if (b.auction_status === 'cancelled') {
+              result = '<span style="color:#856404;">Cancelled</span>';
+            } else if (b.auction_status === 'expired') {
+              result = '<span style="color:#6c757d;">Expired</span>';
             }
             return '<tr style="border-bottom:1px solid #eee; cursor:pointer;" onclick="openAuction(' + b.auction_id + ')">' +
               '<td style="padding:8px;">' + escapeHtml(b.auction_title) + '</td>' +
@@ -925,7 +933,7 @@
           method: 'PUT',
           body: JSON.stringify({ email: document.getElementById('profile-email').value }),
         });
-        showMsg('profile-msg', 'Email updated to ' + escapeHtml(data.email), false);
+        showMsg('profile-msg', 'Email updated to ' + escapeHtml(data.user.email), false);
       } catch (err) {
         showMsg('profile-msg', err.message, true);
       }
