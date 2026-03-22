@@ -74,7 +74,7 @@ resource "random_id" "bucket_suffix" {
 # 3a. Create backup bucket only when explicitly enabled
 resource "digitalocean_spaces_bucket" "auction_backups" {
   count  = var.create_backup_bucket ? 1 : 0
-  name   = trimspace(var.backup_bucket_name) != "" ? var.backup_bucket_name : "auction-backups-${random_id.bucket_suffix[0].hex}"
+  name   = trimspace(var.backup_bucket_name) != "" ? var.backup_bucket_name : "auction-backups-${try(random_id.bucket_suffix[0].hex, "")}"
   region = "tor1"
   acl    = "private"
 }
@@ -87,7 +87,7 @@ data "digitalocean_spaces_bucket" "auction_backups" {
 }
 
 locals {
-  backup_bucket_name = var.create_backup_bucket ? digitalocean_spaces_bucket.auction_backups[0].name : (trimspace(var.backup_bucket_name) != "" ? data.digitalocean_spaces_bucket.auction_backups[0].name : "")
+  backup_bucket_name = var.create_backup_bucket ? try(digitalocean_spaces_bucket.auction_backups[0].name, "") : (trimspace(var.backup_bucket_name) != "" ? try(data.digitalocean_spaces_bucket.auction_backups[0].name, "") : "")
 }
 
 # Output the required variables so you can easily copy them into your K8s secrets
