@@ -273,6 +273,112 @@ app.get('/api/users/me', authenticate_token, async (req, res) => {
   }
 });
 
+app.post('/api/users/:id/follow', authenticate_token, async (req, res) => {
+  const followingId = parseInt(req.params.id, 10);
+  const followerId = req.user.id;
+
+  if (Number.isNaN(followingId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  if (followingId === followerId) {
+    return res.status(400).json({ error: 'You cannot follow yourself' });
+  }
+
+  try {
+    const userCheck = await pool.query(
+      'SELECT id, username FROM users WHERE id = $1',
+      [followingId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await pool.query(
+      `
+        INSERT INTO followers (follower_id, following_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `,
+      [followerId, followingId]
+    );
+
+    res.status(200).json({
+      message: 'Followed user successfully',
+      following_id: followingId,
+    });
+  } catch (err) {
+    console.error('Error following user:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/users/:id/follow', authenticate_token, async (req, res) => {
+  const followingId = parseInt(req.params.id, 10);
+  const followerId = req.user.id;
+
+  if (Number.isNaN(followingId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  try {
+    await pool.query(
+      `
+        DELETE FROM followers
+        WHERE follower_id = $1 AND following_id = $2
+      `,
+      [followerId, followingId]
+    );
+
+    res.status(200).json({
+      message: 'Unfollowed user successfully',
+      following_id: followingId,
+    });
+  } catch (err) {
+    console.error('Error unfollowing user:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/users/:id/follow-status', authenticate_token, async (req, res) => {
+  const followingId = parseInt(req.params.id, 10);
+  const followerId = req.user.id;
+
+  if (Number.isNaN(followingId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  try {
+    const userCheck = await pool.query(
+      'SELECT id FROM users WHERE id = $1',
+      [followingId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const result = await pool.query(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM followers
+          WHERE follower_id = $1 AND following_id = $2
+        ) AS is_following
+      `,
+      [followerId, followingId]
+    );
+
+    res.status(200).json({
+      is_following: result.rows[0].is_following,
+    });
+  } catch (err) {
+    console.error('Error checking follow status:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
   const userId = req.user.id;
 
