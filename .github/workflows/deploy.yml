@@ -57,5 +57,5 @@ jobs:
           kubectl rollout restart deployment/worker
           
           # 5. Verify the rollout status
-          kubectl rollout status deployment/api --timeout=120s
-          kubectl rollout status deployment/worker --timeout=120s
+          kubectl rollout status deployment/api --timeout=300s
+          kubectl rollout status deployment/worker --timeout=300s
