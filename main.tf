@@ -26,6 +26,13 @@ variable "spaces_secret_key" {
 variable "alert_email" {
   description = "Email address to receive monitoring alerts"
   type        = string
+  default     = ""
+}
+
+variable "enable_monitor_alerts" {
+  description = "Create DigitalOcean monitor alerts (requires a verified email address in DO account)"
+  type        = bool
+  default     = false
 }
 
 variable "cluster_name" {
@@ -74,6 +81,8 @@ output "backup_bucket_name" {
 # ---------------------------------------------------------------------------
 
 resource "digitalocean_monitor_alert" "cpu_alert" {
+  count = var.enable_monitor_alerts ? 1 : 0
+
   alerts {
     email = [var.alert_email]
   }
@@ -87,6 +96,8 @@ resource "digitalocean_monitor_alert" "cpu_alert" {
 }
 
 resource "digitalocean_monitor_alert" "memory_alert" {
+  count = var.enable_monitor_alerts ? 1 : 0
+
   alerts {
     email = [var.alert_email]
   }
@@ -100,6 +111,8 @@ resource "digitalocean_monitor_alert" "memory_alert" {
 }
 
 resource "digitalocean_monitor_alert" "disk_alert" {
+  count = var.enable_monitor_alerts ? 1 : 0
+
   alerts {
     email = [var.alert_email]
   }

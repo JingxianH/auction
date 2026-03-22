@@ -22,11 +22,13 @@ jobs:
       - name: Terraform Apply (Cluster + Spaces + Monitoring Alerts)
         env:
           DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          ENABLE_MONITOR_ALERTS: ${{ secrets.ENABLE_MONITOR_ALERTS || 'false' }}
         run: |
           terraform apply -auto-approve -input=false \
             -var="spaces_access_id=${{ secrets.SPACES_ACCESS_ID }}" \
             -var="spaces_secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
-            -var="alert_email=${{ secrets.ALERT_EMAIL }}"
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -var="enable_monitor_alerts=$ENABLE_MONITOR_ALERTS"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
