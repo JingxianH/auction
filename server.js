@@ -441,20 +441,27 @@ app.get('/api/users/me/bids', authenticate_token, async (req, res) => {
 });
 
 app.post('/api/auctions', authenticate_token, async (req, res) => {
-  const { title, description, starting_price, end_time } = req.body;
-  const creator_id = req.user.id; // get creator id from token
+  const { title, description, starting_price, end_time, is_private } = req.body;
+  const creator_id = req.user.id;
 
   if (!title || !starting_price || !end_time) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
-
   try {
     const query = `
-      INSERT INTO auctions (title, description, starting_price, end_time, creator_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO auctions (title, description, starting_price, end_time, creator_id, is_private)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
-    const values = [title, description, starting_price, end_time, creator_id];
+    const values = [
+      title,
+      description,
+      starting_price,
+      end_time,
+      creator_id,
+      Boolean(is_private)
+    ];
+
     const result = await pool.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (err) {
