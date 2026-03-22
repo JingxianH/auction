@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Prometheus metrics setup
 // ---------------------------------------------------------------------------
 const register = new promClient.Registry();
-promClient.collectDefaultMetrics({ register }); // Node.js process metrics
+promClient.collectDefaultMetrics({ register }); 
 
 const httpRequestsTotal = new promClient.Counter({
   name: 'http_requests_total',
