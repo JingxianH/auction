@@ -78,6 +78,14 @@
     .text-muted { color: #888; font-size: 0.85rem; }
     .back-link { font-size: 0.85rem; color: #1a73e8; cursor: pointer; margin-bottom: 12px; display: inline-block; }
     .back-link:hover { text-decoration: underline; }
+
+    /* Monitoring */
+    .monitor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 12px; }
+    .metric-card { background: #f8f9fb; border: 1px solid #e7eaf0; border-radius: 8px; padding: 12px; }
+    .metric-label { color: #5f6b7a; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .metric-value { margin-top: 6px; font-size: 1.15rem; font-weight: 700; color: #1f2937; }
+    .monitor-meta { margin-top: 10px; font-size: 0.82rem; color: #6b7280; }
+    #metrics-raw { width: 100%; min-height: 170px; background: #0f172a; color: #dbeafe; border: none; border-radius: 8px; padding: 12px; font-family: Consolas, monospace; font-size: 0.78rem; white-space: pre; overflow: auto; }
   </style>
 </head>
 <body>
@@ -144,6 +152,7 @@
       <button class="tab" onclick="switchTab('my')">My Auctions</button>
       <button class="tab" onclick="switchTab('bids')">My Bids</button>
       <button class="tab" onclick="switchTab('profile')">Profile</button>
+      <button class="tab" onclick="switchTab('monitor')">Monitoring</button>
     </div>
 
     <!-- Browse Auctions -->
@@ -218,6 +227,28 @@
           </div>
           <button type="submit" class="btn btn-primary">Update Email</button>
         </form>
+      </div>
+    </div>
+
+    <!-- Monitoring -->
+    <div id="tab-monitor" class="hidden">
+      <div class="card">
+        <h2>Service Metrics</h2>
+        <div id="monitor-msg" class="text-muted">Loading metrics...</div>
+        <div class="monitor-grid">
+          <div class="metric-card"><div class="metric-label">CPU Time</div><div id="m-cpu" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">Resident Memory</div><div id="m-mem" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">Event Loop P99</div><div id="m-loop" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">Health Checks</div><div id="m-health" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">Auctions Requests</div><div id="m-auctions-req" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">/health Avg Latency</div><div id="m-health-lat" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">Active Auctions</div><div id="m-active-auctions" class="metric-value">-</div></div>
+        </div>
+        <div id="monitor-updated" class="monitor-meta">Last updated: -</div>
+      </div>
+      <div class="card">
+        <h2>Raw /metrics</h2>
+        <pre id="metrics-raw">Loading...</pre>
       </div>
     </div>
 
@@ -304,6 +335,7 @@
     let token = localStorage.getItem('token');
     let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     let currentAuctionId = null;
+    let monitorTimer = null;
 
     // --- Init ---
     function init() {
@@ -399,7 +431,7 @@
     }
 
     // --- Tabs ---
-    const allTabs = ['auctions','create','my','bids','profile'];
+    const allTabs = ['auctions','create','my','bids','profile','monitor'];
     function switchTab(name) {
       document.querySelectorAll('.tab').forEach((t, i) => {
         t.classList.toggle('active', allTabs[i] === name);
@@ -407,10 +439,88 @@
       allTabs.forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
       document.getElementById('auction-detail').classList.add('hidden');
 
+      if (monitorTimer) {
+        clearInterval(monitorTimer);
+        monitorTimer = null;
+      }
+
       if (name === 'auctions') loadAuctions();
       if (name === 'my') loadMyAuctions();
       if (name === 'bids') loadMyBids();
       if (name === 'profile') loadProfile();
+      if (name === 'monitor') {
+        loadMonitoring();
+        monitorTimer = setInterval(loadMonitoring, 15000);
+      }
+    }
+
+    // --- Monitoring ---
+    function getMetricValue(metricsText, metricName) {
+      const line = metricsText
+        .split('\n')
+        .find(l => l.startsWith(metricName + ' ') && !l.includes('{'));
+      if (!line) return null;
+      const parts = line.trim().split(' ');
+      return Number(parts[parts.length - 1]);
+    }
+
+    function getLabeledMetricValue(metricsText, metricName, labelMatchers) {
+      const line = metricsText
+        .split('\n')
+        .find(l => l.startsWith(metricName + '{') && labelMatchers.every(m => l.includes(m)));
+      if (!line) return null;
+      const parts = line.trim().split(' ');
+      return Number(parts[parts.length - 1]);
+    }
+
+    function bytesToMB(v) {
+      if (v == null || Number.isNaN(v)) return '-';
+      return (v / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function secondsToMs(v) {
+      if (v == null || Number.isNaN(v)) return '-';
+      return (v * 1000).toFixed(2) + ' ms';
+    }
+
+    function numberOrDash(v, digits) {
+      if (v == null || Number.isNaN(v)) return '-';
+      return Number(v).toFixed(digits);
+    }
+
+    async function loadMonitoring() {
+      const msg = document.getElementById('monitor-msg');
+      try {
+        const res = await fetch('/metrics');
+        const text = await res.text();
+        if (!res.ok) throw new Error('Failed to fetch /metrics');
+
+        document.getElementById('metrics-raw').textContent = text;
+
+        const cpu = getMetricValue(text, 'process_cpu_seconds_total');
+        const mem = getMetricValue(text, 'process_resident_memory_bytes');
+        const loopP99 = getMetricValue(text, 'nodejs_eventloop_lag_p99_seconds');
+        const activeAuctions = getMetricValue(text, 'auction_active_total');
+        const healthReq = getLabeledMetricValue(text, 'http_requests_total', ['route="/health"', 'status_code="200"']);
+        const auctionsReq = getLabeledMetricValue(text, 'http_requests_total', ['route="/api/auctions"', 'status_code="200"']);
+
+        const healthLatencySum = getLabeledMetricValue(text, 'http_request_duration_seconds_sum', ['route="/health"', 'status_code="200"']);
+        const healthLatencyCount = getLabeledMetricValue(text, 'http_request_duration_seconds_count', ['route="/health"', 'status_code="200"']);
+        const healthAvgLatency = (healthLatencySum != null && healthLatencyCount) ? (healthLatencySum / healthLatencyCount) : null;
+
+        document.getElementById('m-cpu').textContent = numberOrDash(cpu, 3) + (cpu != null ? ' s' : '');
+        document.getElementById('m-mem').textContent = bytesToMB(mem);
+        document.getElementById('m-loop').textContent = secondsToMs(loopP99);
+        document.getElementById('m-health').textContent = numberOrDash(healthReq, 0);
+        document.getElementById('m-auctions-req').textContent = numberOrDash(auctionsReq, 0);
+        document.getElementById('m-health-lat').textContent = secondsToMs(healthAvgLatency);
+        document.getElementById('m-active-auctions').textContent = numberOrDash(activeAuctions, 0);
+
+        document.getElementById('monitor-updated').textContent = 'Last updated: ' + new Date().toLocaleString();
+        msg.textContent = 'Live metrics from /metrics (auto-refresh every 15s).';
+      } catch (err) {
+        msg.textContent = 'Unable to load metrics: ' + err.message;
+      }
     }
 
     // --- Auctions ---
