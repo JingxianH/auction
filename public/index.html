@@ -86,7 +86,17 @@
     .metric-value { margin-top: 6px; font-size: 1.15rem; font-weight: 700; color: #1f2937; }
     .monitor-meta { margin-top: 10px; font-size: 0.82rem; color: #6b7280; }
     #metrics-raw { width: 100%; min-height: 170px; background: #0f172a; color: #dbeafe; border: none; border-radius: 8px; padding: 12px; font-family: Consolas, monospace; font-size: 0.78rem; white-space: pre; overflow: auto; }
+    .charts-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+    .chart-wrap { background: #fff; border: 1px solid #e7eaf0; border-radius: 8px; padding: 12px; }
+    .chart-title { margin-bottom: 8px; font-size: 0.9rem; color: #374151; font-weight: 600; }
+    .chart-canvas { width: 100%; height: 220px; }
+
+    @media (min-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr 1fr; }
+      .chart-wrap.span-2 { grid-column: span 2; }
+    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -245,6 +255,21 @@
           <div class="metric-card"><div class="metric-label">Active Auctions</div><div id="m-active-auctions" class="metric-value">-</div></div>
         </div>
         <div id="monitor-updated" class="monitor-meta">Last updated: -</div>
+
+        <div class="charts-grid">
+          <div class="chart-wrap">
+            <div class="chart-title">Memory (MB)</div>
+            <canvas id="chart-memory" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-title">Event Loop P99 (ms)</div>
+            <canvas id="chart-loop" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-wrap span-2">
+            <div class="chart-title">Request Counters</div>
+            <canvas id="chart-requests" class="chart-canvas"></canvas>
+          </div>
+        </div>
       </div>
       <div class="card">
         <h2>Raw /metrics</h2>
@@ -336,6 +361,18 @@
     let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
     let currentAuctionId = null;
     let monitorTimer = null;
+    const MAX_MONITOR_POINTS = 30;
+    const monitorHistory = {
+      labels: [],
+      memoryMB: [],
+      loopP99Ms: [],
+      healthReq: [],
+      auctionsReq: [],
+      activeAuctions: [],
+    };
+    let memoryChart = null;
+    let loopChart = null;
+    let requestsChart = null;
 
     // --- Init ---
     function init() {
@@ -488,9 +525,115 @@
       return Number(v).toFixed(digits);
     }
 
+    function trimHistory() {
+      if (monitorHistory.labels.length <= MAX_MONITOR_POINTS) return;
+      monitorHistory.labels.shift();
+      monitorHistory.memoryMB.shift();
+      monitorHistory.loopP99Ms.shift();
+      monitorHistory.healthReq.shift();
+      monitorHistory.auctionsReq.shift();
+      monitorHistory.activeAuctions.shift();
+    }
+
+    function initMonitoringCharts() {
+      if (memoryChart || !window.Chart) return;
+
+      const baseOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        animation: false,
+        plugins: {
+          legend: { display: true },
+          tooltip: { enabled: true },
+        },
+        scales: {
+          x: { grid: { color: '#eef1f5' } },
+          y: { beginAtZero: true, grid: { color: '#eef1f5' } },
+        },
+      };
+
+      memoryChart = new Chart(document.getElementById('chart-memory'), {
+        type: 'line',
+        data: {
+          labels: monitorHistory.labels,
+          datasets: [{
+            label: 'Resident Memory',
+            data: monitorHistory.memoryMB,
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37,99,235,0.15)',
+            tension: 0.25,
+            fill: true,
+            pointRadius: 2,
+          }],
+        },
+        options: baseOptions,
+      });
+
+      loopChart = new Chart(document.getElementById('chart-loop'), {
+        type: 'line',
+        data: {
+          labels: monitorHistory.labels,
+          datasets: [{
+            label: 'Event Loop P99',
+            data: monitorHistory.loopP99Ms,
+            borderColor: '#ea580c',
+            backgroundColor: 'rgba(234,88,12,0.15)',
+            tension: 0.25,
+            fill: true,
+            pointRadius: 2,
+          }],
+        },
+        options: baseOptions,
+      });
+
+      requestsChart = new Chart(document.getElementById('chart-requests'), {
+        type: 'line',
+        data: {
+          labels: monitorHistory.labels,
+          datasets: [
+            {
+              label: '/health requests',
+              data: monitorHistory.healthReq,
+              borderColor: '#059669',
+              backgroundColor: 'rgba(5,150,105,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: '/api/auctions requests',
+              data: monitorHistory.auctionsReq,
+              borderColor: '#7c3aed',
+              backgroundColor: 'rgba(124,58,237,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: 'Active auctions',
+              data: monitorHistory.activeAuctions,
+              borderColor: '#dc2626',
+              backgroundColor: 'rgba(220,38,38,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+          ],
+        },
+        options: baseOptions,
+      });
+    }
+
+    function updateMonitoringCharts() {
+      if (!memoryChart || !loopChart || !requestsChart) return;
+      memoryChart.update();
+      loopChart.update();
+      requestsChart.update();
+    }
+
     async function loadMonitoring() {
       const msg = document.getElementById('monitor-msg');
       try {
+        initMonitoringCharts();
+
         const res = await fetch('/metrics');
         const text = await res.text();
         if (!res.ok) throw new Error('Failed to fetch /metrics');
@@ -507,6 +650,16 @@
         const healthLatencySum = getLabeledMetricValue(text, 'http_request_duration_seconds_sum', ['route="/health"', 'status_code="200"']);
         const healthLatencyCount = getLabeledMetricValue(text, 'http_request_duration_seconds_count', ['route="/health"', 'status_code="200"']);
         const healthAvgLatency = (healthLatencySum != null && healthLatencyCount) ? (healthLatencySum / healthLatencyCount) : null;
+
+        const nowLabel = new Date().toLocaleTimeString();
+        monitorHistory.labels.push(nowLabel);
+        monitorHistory.memoryMB.push(mem == null ? null : Number((mem / (1024 * 1024)).toFixed(2)));
+        monitorHistory.loopP99Ms.push(loopP99 == null ? null : Number((loopP99 * 1000).toFixed(3)));
+        monitorHistory.healthReq.push(healthReq);
+        monitorHistory.auctionsReq.push(auctionsReq);
+        monitorHistory.activeAuctions.push(activeAuctions);
+        trimHistory();
+        updateMonitoringCharts();
 
         document.getElementById('m-cpu').textContent = numberOrDash(cpu, 3) + (cpu != null ? ' s' : '');
         document.getElementById('m-mem').textContent = bytesToMB(mem);
