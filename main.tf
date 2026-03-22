@@ -23,6 +23,12 @@ variable "spaces_secret_key" {
   sensitive   = true
 }
 
+  variable "alert_email" {
+    description = "Email address to receive monitoring alerts"
+    type        = string
+  }
+
+
 provider "digitalocean" {
   # Terraform will still automatically use DIGITALOCEAN_TOKEN from your environment for the cluster
   spaces_access_id  = var.spaces_access_id
@@ -67,3 +73,48 @@ output "cluster_id" {
 output "backup_bucket_name" {
   value = digitalocean_spaces_bucket.auction_backups.name
 }
+
+  # ---------------------------------------------------------------------------
+  # Monitoring: DigitalOcean Alerts targeting the Kubernetes node pool
+  # DOKS automatically tags every node droplet with "k8s:<cluster-id>",
+  # so we target that tag to cover all nodes including auto-scaled ones.
+  # ---------------------------------------------------------------------------
+
+  resource "digitalocean_monitor_alert" "cpu_alert" {
+    alerts {
+      email = [var.alert_email]
+    }
+    window      = "5m"
+    type        = "v1/insights/droplet/cpu"
+    compare     = "GreaterThan"
+    value       = 80
+    enabled     = true
+    description = "Auction cluster: node CPU usage > 80%"
+    tags        = ["k8s:${digitalocean_kubernetes_cluster.auction_cluster.id}"]
+  }
+
+  resource "digitalocean_monitor_alert" "memory_alert" {
+    alerts {
+      email = [var.alert_email]
+    }
+    window      = "5m"
+    type        = "v1/insights/droplet/memory_utilization_percent"
+    compare     = "GreaterThan"
+    value       = 80
+    enabled     = true
+    description = "Auction cluster: node memory usage > 80%"
+    tags        = ["k8s:${digitalocean_kubernetes_cluster.auction_cluster.id}"]
+  }
+
+  resource "digitalocean_monitor_alert" "disk_alert" {
+    alerts {
+      email = [var.alert_email]
+    }
+    window      = "5m"
+    type        = "v1/insights/droplet/disk_utilization_percent"
+    compare     = "GreaterThan"
+    value       = 80
+    enabled     = true
+    description = "Auction cluster: node disk usage > 80%"
+    tags        = ["k8s:${digitalocean_kubernetes_cluster.auction_cluster.id}"]
+  }
