@@ -24,7 +24,15 @@
     /* Forms */
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #555; }
-    .form-group input, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+    /* form-group input, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; } */
+    .form-group input:not([type="checkbox"]),
+    .form-group textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
     .form-group textarea { resize: vertical; min-height: 60px; }
     .form-row { display: flex; gap: 12px; }
     .form-row .form-group { flex: 1; }
@@ -68,6 +76,8 @@
     .btn-danger { background: #dc3545 !important; color: #fff !important; }
     .btn-danger:hover { background: #c82333 !important; }
     .btn-sm { padding: 6px 14px !important; font-size: 0.85rem !important; }
+    .btn-secondary { background: #6c757d !important; color: #fff !important; }
+    .btn-secondary:hover { background: #5a6268 !important; }
 
     /* Messages */
     .msg { padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; font-size: 0.85rem; }
@@ -204,6 +214,12 @@
               <input type="datetime-local" id="auction-end" required>
             </div>
           </div>
+          <div class="form-group" style="margin-top: 8px;">
+            <label for="auction-private" style="display:flex; align-items:center; gap:8px; font-weight:500; cursor:pointer; margin-bottom:0;">
+              <input type="checkbox" id="auction-private" style="width:auto; margin:0;">
+              <span>Make this auction private (visible only to followers)</span>
+            </label>
+          </div>
           <button type="submit" class="btn btn-primary">Create Auction</button>
         </form>
       </div>
@@ -295,6 +311,7 @@
           </div>
           <span id="detail-badge" class="badge"></span>
         </div>
+        <div id="follow-controls" style="margin-bottom:16px;"></div>
         <div style="display:flex; gap:24px; margin-bottom:16px;">
           <div><strong>Starting Price:</strong> <span id="detail-start-price"></span></div>
           <div><strong>Current Bid:</strong> <span id="detail-highest" style="color:#28a745; font-weight:700;"></span></div>
@@ -700,8 +717,7 @@
 
     async function loadMyAuctions() {
       try {
-        const auctions = await api('/api/auctions');
-        const mine = auctions.filter(a => a.creator_id === currentUser.id);
+        const mine = await api('/api/users/me/auctions');
         renderAuctions(mine, 'my-auctions-list');
         if (mine.length === 0) {
           document.getElementById('my-auctions-list').innerHTML = '<p class="text-muted">You haven\'t created any auctions yet.</p>';
@@ -721,10 +737,16 @@
         const statusClass = a.status === 'active' ? 'badge-active' : a.status === 'completed' ? 'badge-completed' : 'badge-expired';
         const endDate = new Date(a.end_time).toLocaleString();
         const bid = a.highest_bid ? '$' + parseFloat(a.highest_bid).toFixed(2) : 'No bids';
+        const privacyBadge = a.is_private
+          ? '<span class="badge" style="background:#8b7bd6; color:#fff; font-size:0.68rem; padding:2px 7px; line-height:1.1; white-space:nowrap; margin:0; border-radius:999px;">Private</span>'
+          : '';
         return '<div class="auction-item" onclick="openAuction(' + a.id + ')">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-            '<h3>' + escapeHtml(a.title) + '</h3>' +
-            '<span class="badge ' + statusClass + '">' + escapeHtml(a.status) + '</span>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+              '<h3 style="margin:0;">' + escapeHtml(a.title) + '</h3>' +
+              privacyBadge +
+            '</div>' +
+            '<span class="badge ' + statusClass + '" style="flex-shrink:0;">' + escapeHtml(a.status) + '</span>' +
           '</div>' +
           '<p class="meta">Ends: ' + escapeHtml(endDate) + '</p>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
@@ -735,6 +757,59 @@
       }).join('');
     }
 
+    async function loadFollowControls(creatorId) {
+      const container = document.getElementById('follow-controls');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      if (!currentUser || !token) return;
+      if (currentUser.id === creatorId) return;
+
+      try {
+        const data = await api('/api/users/' + creatorId + '/follow-status');
+        const isFollowing = data.is_following;
+
+        container.innerHTML =
+          '<button class="btn btn-secondary btn-sm" onclick="' +
+          (isFollowing ? 'unfollowUser(' + creatorId + ')' : 'followUser(' + creatorId + ')') +
+          '">' +
+          (isFollowing ? 'Unfollow Seller' : 'Follow Seller') +
+          '</button>';
+      } catch (err) {
+        console.error('Error loading follow controls:', err);
+        container.innerHTML = '';
+      }
+    }
+
+    async function followUser(userId) {
+      try {
+        await api('/api/users/' + userId + '/follow', {
+          method: 'POST'
+        });
+
+        if (currentAuctionId) {
+          await openAuction(currentAuctionId);
+        }
+      } catch (err) {
+        alert(err.message || 'Failed to follow seller');
+      }
+    }
+
+    async function unfollowUser(userId) {
+      try {
+        await api('/api/users/' + userId + '/follow', {
+          method: 'DELETE'
+        });
+
+        if (currentAuctionId) {
+          await openAuction(currentAuctionId);
+        }
+      } catch (err) {
+        alert(err.message || 'Failed to unfollow seller');
+      }
+    }
+
     // --- Auction Detail ---
     async function openAuction(id) {
       currentAuctionId = id;
@@ -743,12 +818,20 @@
 
       try {
         const a = await api('/api/auctions/' + id);
-        document.getElementById('detail-title').textContent = a.title;
+        // document.getElementById('detail-title').textContent = a.title;
+        document.getElementById('detail-title').innerHTML =
+          '<span style="display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+            '<span>' + escapeHtml(a.title) + '</span>' +
+            (a.is_private
+              ? '<span class="badge" style="background:#8b7bd6; color:#fff; font-size:0.68rem; padding:2px 7px; line-height:1.1; white-space:nowrap; margin:0; border-radius:999px;">Private</span>'
+              : '') +
+          '</span>';
         document.getElementById('detail-desc').textContent = a.description || 'No description';
         document.getElementById('detail-start-price').textContent = '$' + parseFloat(a.starting_price).toFixed(2);
         document.getElementById('detail-highest').textContent = a.highest_bid ? '$' + parseFloat(a.highest_bid).toFixed(2) : 'No bids';
         document.getElementById('detail-end').textContent = new Date(a.end_time).toLocaleString();
 
+        await loadFollowControls(a.creator_id);
         const badge = document.getElementById('detail-badge');
         badge.textContent = a.status;
         badge.className = 'badge badge-' + a.status;
@@ -822,6 +905,8 @@
       document.getElementById('auction-detail').classList.add('hidden');
       const activeTab = document.querySelector('.tab.active');
       const tabName = activeTab ? allTabs[Array.from(document.querySelectorAll('.tab')).indexOf(activeTab)] : 'auctions';
+      const followControls = document.getElementById('follow-controls');
+      if (followControls) followControls.innerHTML = '';
       document.getElementById('tab-' + tabName).classList.remove('hidden');
       if (tabName === 'auctions') loadAuctions();
     }
@@ -884,6 +969,7 @@
             description: document.getElementById('auction-desc').value,
             starting_price: parseFloat(document.getElementById('auction-price').value),
             end_time: new Date(document.getElementById('auction-end').value).toISOString(),
+            is_private: document.getElementById('auction-private').checked,
           }),
         });
         showMsg('create-msg', 'Auction created successfully! (ID: ' + data.id + ')', false);
@@ -891,6 +977,7 @@
         document.getElementById('auction-desc').value = '';
         document.getElementById('auction-price').value = '';
         document.getElementById('auction-end').value = '';
+        document.getElementById('auction-private').checked = false;
       } catch (err) {
         showMsg('create-msg', err.message, true);
       }
