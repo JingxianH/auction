@@ -48,6 +48,48 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+async function canUserAccessAuction(auctionId, userId) {
+  const result = await pool.query(
+    `
+      SELECT
+        a.id,
+        a.creator_id,
+        a.is_private,
+        EXISTS (
+          SELECT 1
+          FROM followers f
+          WHERE f.follower_id = $2
+            AND f.following_id = a.creator_id
+        ) AS is_follower
+      FROM auctions a
+      WHERE a.id = $1
+    `,
+    [auctionId, userId]
+  );
+
+  if (result.rows.length === 0) {
+    return {
+      exists: false,
+      allowed: false,
+      auction: null
+    };
+  }
+
+  const auction = result.rows[0];
+
+  const allowed =
+    !auction.is_private ||
+    auction.creator_id === userId ||
+    auction.is_follower;
+
+  return {
+    exists: true,
+    allowed,
+    auction
+  };
+}
+
 // ---------------------------------------------------------------------------
 
 // Email client for bid notifications (uses HTTPS, no SMTP port needed)
@@ -105,6 +147,30 @@ function authenticate_token(req, res, next) {
   } catch (error) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
+}
+
+function optional_authenticate_token(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    req.user = null;
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  
+  if (!token) {
+    req.user = null;
+    return next();}
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      req.user = null;
+      return next();
+    }
+    req.user = user;
+    next();
+  });
 }
 
 app.post('/api/register', async (req, res) => {
@@ -207,6 +273,112 @@ app.get('/api/users/me', authenticate_token, async (req, res) => {
   }
 });
 
+app.post('/api/users/:id/follow', authenticate_token, async (req, res) => {
+  const followingId = parseInt(req.params.id, 10);
+  const followerId = req.user.id;
+
+  if (Number.isNaN(followingId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  if (followingId === followerId) {
+    return res.status(400).json({ error: 'You cannot follow yourself' });
+  }
+
+  try {
+    const userCheck = await pool.query(
+      'SELECT id, username FROM users WHERE id = $1',
+      [followingId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await pool.query(
+      `
+        INSERT INTO followers (follower_id, following_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `,
+      [followerId, followingId]
+    );
+
+    res.status(200).json({
+      message: 'Followed user successfully',
+      following_id: followingId,
+    });
+  } catch (err) {
+    console.error('Error following user:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/users/:id/follow', authenticate_token, async (req, res) => {
+  const followingId = parseInt(req.params.id, 10);
+  const followerId = req.user.id;
+
+  if (Number.isNaN(followingId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  try {
+    await pool.query(
+      `
+        DELETE FROM followers
+        WHERE follower_id = $1 AND following_id = $2
+      `,
+      [followerId, followingId]
+    );
+
+    res.status(200).json({
+      message: 'Unfollowed user successfully',
+      following_id: followingId,
+    });
+  } catch (err) {
+    console.error('Error unfollowing user:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/users/:id/follow-status', authenticate_token, async (req, res) => {
+  const followingId = parseInt(req.params.id, 10);
+  const followerId = req.user.id;
+
+  if (Number.isNaN(followingId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  try {
+    const userCheck = await pool.query(
+      'SELECT id FROM users WHERE id = $1',
+      [followingId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const result = await pool.query(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM followers
+          WHERE follower_id = $1 AND following_id = $2
+        ) AS is_following
+      `,
+      [followerId, followingId]
+    );
+
+    res.status(200).json({
+      is_following: result.rows[0].is_following,
+    });
+  } catch (err) {
+    console.error('Error checking follow status:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
   const userId = req.user.id;
 
@@ -222,6 +394,7 @@ app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
           a.status,
           a.creator_id,
           a.winner_id,
+          a.is_private,
           MAX(b.amount) AS highest_bid
         FROM auctions a
         LEFT JOIN bids b ON a.id = b.auction_id
@@ -269,20 +442,27 @@ app.get('/api/users/me/bids', authenticate_token, async (req, res) => {
 });
 
 app.post('/api/auctions', authenticate_token, async (req, res) => {
-  const { title, description, starting_price, end_time } = req.body;
-  const creator_id = req.user.id; // get creator id from token
+  const { title, description, starting_price, end_time, is_private } = req.body;
+  const creator_id = req.user.id;
 
   if (!title || !starting_price || !end_time) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
-
   try {
     const query = `
-      INSERT INTO auctions (title, description, starting_price, end_time, creator_id)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO auctions (title, description, starting_price, end_time, creator_id, is_private)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
     `;
-    const values = [title, description, starting_price, end_time, creator_id];
+    const values = [
+      title,
+      description,
+      starting_price,
+      end_time,
+      creator_id,
+      Boolean(is_private)
+    ];
+
     const result = await pool.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -291,11 +471,11 @@ app.post('/api/auctions', authenticate_token, async (req, res) => {
   }
 });
 
-app.get('/api/auctions', async (req, res) => {
+app.get('/api/auctions', optional_authenticate_token, async (req, res) => {
   const { status, search } = req.query;
+  const userId = req.user ? req.user.id : null;
 
   try {
-    // Include the current highest bid (if any) for each auction
     let query = `
       SELECT a.*, b.highest_bid
       FROM auctions a
@@ -304,11 +484,20 @@ app.get('/api/auctions', async (req, res) => {
         FROM bids
         GROUP BY auction_id
       ) b ON a.id = b.auction_id
-      WHERE 1=1
+      WHERE (
+        a.is_private = false
+        OR a.creator_id = $1
+        OR EXISTS (
+          SELECT 1
+          FROM followers f
+          WHERE f.follower_id = $1
+            AND f.following_id = a.creator_id
+        )
+      )
     `;
 
-    const values = [];
-    let counter = 1;
+    const values = [userId];
+    let counter = 2;
 
     if (search) {
       query += ` AND a.title ILIKE $${counter}`;
@@ -317,9 +506,9 @@ app.get('/api/auctions', async (req, res) => {
     }
 
     if (status === 'active') {
-      query += " AND a.status = 'active' AND a.end_time > CURRENT_TIMESTAMP";
+      query += ` AND a.status = 'active' AND a.end_time > CURRENT_TIMESTAMP`;
     } else if (status === 'completed') {
-      query += " AND (a.status = 'completed' OR a.end_time <= CURRENT_TIMESTAMP)";
+      query += ` AND (a.status = 'completed' OR a.end_time <= CURRENT_TIMESTAMP)`;
     }
 
     query += ' ORDER BY a.end_time ASC';
@@ -333,7 +522,7 @@ app.get('/api/auctions', async (req, res) => {
 });
 
 // Get a single auction (with highest bid + winner info)
-app.get('/api/auctions/:id', async (req, res) => {
+app.get('/api/auctions/:id', optional_authenticate_token, async (req, res) => {
   const auctionId = parseInt(req.params.id, 10);
 
   if (Number.isNaN(auctionId)) {
@@ -361,7 +550,18 @@ app.get('/api/auctions/:id', async (req, res) => {
       return res.status(404).json({ error: 'Auction not found' });
     }
 
-    res.status(200).json(result.rows[0]);
+    const auction = result.rows[0];
+    const userId = req.user ? req.user.id : null;
+
+    if (auction.is_private) {
+      const access = await canUserAccessAuction(auctionId, userId);
+
+      if (!access.allowed) {
+        return res.status(403).json({ error: 'This is a private auction' });
+      }
+    }
+
+    res.status(200).json(auction);
   } catch (err) {
     console.error('Error fetching auction:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -468,7 +668,7 @@ app.post('/api/auctions/:id/cancel', authenticate_token, async (req, res) => {
 });
 
 // Get bid history for an auction
-app.get('/api/auctions/:id/bids', async (req, res) => {
+app.get('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
   const auctionId = parseInt(req.params.id, 10);
 
   if (Number.isNaN(auctionId)) {
@@ -476,13 +676,14 @@ app.get('/api/auctions/:id/bids', async (req, res) => {
   }
 
   try {
-    const auctionCheck = await pool.query(
-      'SELECT id FROM auctions WHERE id = $1',
-      [auctionId]
-    );
+    const access = await canUserAccessAuction(auctionId, req.user.id);
 
-    if (auctionCheck.rows.length === 0) {
+    if (!access.exists) {
       return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    if (!access.allowed) {
+      return res.status(403).json({ error:'You do not have access to this private auction' });
     }
 
     const result = await pool.query(
@@ -523,7 +724,7 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
 
     // Lock the auction row to avoid race conditions
     const auctionResult = await client.query(
-      'SELECT id, starting_price, end_time, status FROM auctions WHERE id = $1 FOR UPDATE',
+      'SELECT id, creator_id, is_private, starting_price, end_time, status FROM auctions WHERE id = $1 FOR UPDATE',
       [auctionId]
     );
 
@@ -533,6 +734,25 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
     }
 
     const auction = auctionResult.rows[0];
+
+    if (auction.creator_id === userId) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'You cannot bid on your own auction' });
+    }
+    if (auction.is_private && auction.creator_id !== userId) {
+      const followerCheck = await client.query(
+        `
+          SELECT 1
+          FROM followers
+          WHERE follower_id = $1 AND following_id = $2
+        `,
+        [userId, auction.creator_id]
+      );
+      if (followerCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({error: 'You are not allowed to bid on this private auction'});
+      }
+    }
 
     // Enforce auction state & time rules
     if (auction.status !== 'active') {

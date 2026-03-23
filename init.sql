@@ -23,6 +23,21 @@ CREATE TABLE IF NOT EXISTS auctions (
     winner_id INTEGER REFERENCES users(id)
 );
 
+ALTER TABLE auctions
+ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS followers (
+    follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    following_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_id, following_id),
+    CHECK (follower_id <> following_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_auctions_creator_id ON auctions(creator_id);
+CREATE INDEX IF NOT EXISTS idx_auctions_is_private ON auctions(is_private);
+CREATE INDEX IF NOT EXISTS idx_followers_following_id ON followers(following_id);
+
 CREATE TABLE IF NOT EXISTS bids (
     id SERIAL PRIMARY KEY,
     auction_id INTEGER NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
