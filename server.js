@@ -667,7 +667,7 @@ app.post('/api/auctions/:id/cancel', authenticate_token, async (req, res) => {
 });
 
 // Get bid history for an auction
-app.get('/api/auctions/:id/bids', async (req, res) => {
+app.get('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
   const auctionId = parseInt(req.params.id, 10);
 
   if (Number.isNaN(auctionId)) {
@@ -675,13 +675,14 @@ app.get('/api/auctions/:id/bids', async (req, res) => {
   }
 
   try {
-    const auctionCheck = await pool.query(
-      'SELECT id FROM auctions WHERE id = $1',
-      [auctionId]
-    );
+    const access = await canUserAccessAuction(auctionId, req.user.id);
 
-    if (auctionCheck.rows.length === 0) {
+    if (!access.exists) {
       return res.status(404).json({ error: 'Auction not found' });
+    }
+
+    if (!access.allowed) {
+      return res.status(403).json({ error:'You do not have access to this private auction' });
     }
 
     const result = await pool.query(
@@ -722,7 +723,7 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
 
     // Lock the auction row to avoid race conditions
     const auctionResult = await client.query(
-      'SELECT id, starting_price, end_time, status FROM auctions WHERE id = $1 FOR UPDATE',
+      'SELECT id, creator_id, is_private, starting_price, end_time, status FROM auctions WHERE id = $1 FOR UPDATE',
       [auctionId]
     );
 
@@ -732,6 +733,25 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
     }
 
     const auction = auctionResult.rows[0];
+
+    if (auction.creator_id === userId) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'You cannot bid on your own auction' });
+    }
+    if (auction.is_private && auction.creator_id !== userId) {
+      const followerCheck = await client.query(
+        `
+          SELECT 1
+          FROM followers
+          WHERE follower_id = $1 AND following_id = $2
+        `,
+        [userId, auction.creator_id]
+      );
+      if (followerCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({error: 'You are not allowed to bid on this private auction'});
+      }
+    }
 
     // Enforce auction state & time rules
     if (auction.status !== 'active') {
