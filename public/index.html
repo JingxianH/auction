@@ -426,8 +426,13 @@
     function logout() {
       token = null;
       currentUser = null;
+      currentAuctionId = null;
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      document.getElementById('my-auctions-list').innerHTML = '';
+      document.getElementById('my-bids-list').innerHTML = '';
+      document.getElementById('follow-controls').innerHTML = '';
+      document.getElementById('auction-detail').classList.add('hidden');
       showAuth();
     }
 
@@ -470,7 +475,7 @@
         showMsg('register-msg', err.message, true);
       }
     }
-
+    
     async function login(e) {
       e.preventDefault();
       try {
@@ -481,11 +486,23 @@
             password: document.getElementById('login-password').value,
           }),
         });
+
         token = data.token;
         currentUser = data.user;
+        currentAuctionId = null;
+
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(currentUser));
+
+        document.getElementById('my-auctions-list').innerHTML = '';
+        document.getElementById('my-bids-list').innerHTML = '';
+        document.getElementById('follow-controls').innerHTML = '';
+        document.getElementById('auction-detail').classList.add('hidden');
+
         showApp();
+
+        await loadMyAuctions();
+        await loadMyBids();
       } catch (err) {
         showMsg('login-msg', err.message, true);
       }
