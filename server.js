@@ -470,11 +470,11 @@ app.post('/api/auctions', authenticate_token, async (req, res) => {
   }
 });
 
-app.get('/api/auctions', async (req, res) => {
+app.get('/api/auctions', optional_authenticate_token, async (req, res) => {
   const { status, search } = req.query;
+  const userId = req.user ? req.user.id : null;
 
   try {
-    // Include the current highest bid (if any) for each auction
     let query = `
       SELECT a.*, b.highest_bid
       FROM auctions a
@@ -483,11 +483,20 @@ app.get('/api/auctions', async (req, res) => {
         FROM bids
         GROUP BY auction_id
       ) b ON a.id = b.auction_id
-      WHERE 1=1
+      WHERE (
+        a.is_private = false
+        OR a.creator_id = $1
+        OR EXISTS (
+          SELECT 1
+          FROM followers f
+          WHERE f.follower_id = $1
+            AND f.following_id = a.creator_id
+        )
+      )
     `;
 
-    const values = [];
-    let counter = 1;
+    const values = [userId];
+    let counter = 2;
 
     if (search) {
       query += ` AND a.title ILIKE $${counter}`;
@@ -496,9 +505,9 @@ app.get('/api/auctions', async (req, res) => {
     }
 
     if (status === 'active') {
-      query += " AND a.status = 'active' AND a.end_time > CURRENT_TIMESTAMP";
+      query += ` AND a.status = 'active' AND a.end_time > CURRENT_TIMESTAMP`;
     } else if (status === 'completed') {
-      query += " AND (a.status = 'completed' OR a.end_time <= CURRENT_TIMESTAMP)";
+      query += ` AND (a.status = 'completed' OR a.end_time <= CURRENT_TIMESTAMP)`;
     }
 
     query += ' ORDER BY a.end_time ASC';
@@ -512,7 +521,7 @@ app.get('/api/auctions', async (req, res) => {
 });
 
 // Get a single auction (with highest bid + winner info)
-app.get('/api/auctions/:id', async (req, res) => {
+app.get('/api/auctions/:id', optional_authenticate_token, async (req, res) => {
   const auctionId = parseInt(req.params.id, 10);
 
   if (Number.isNaN(auctionId)) {
@@ -540,7 +549,18 @@ app.get('/api/auctions/:id', async (req, res) => {
       return res.status(404).json({ error: 'Auction not found' });
     }
 
-    res.status(200).json(result.rows[0]);
+    const auction = result.rows[0];
+    const userId = req.user ? req.user.id : null;
+
+    if (auction.is_private) {
+      const access = await canUserAccessAuction(auctionId, userId);
+
+      if (!access.allowed) {
+        return res.status(403).json({ error: 'This is a private auction' });
+      }
+    }
+
+    res.status(200).json(auction);
   } catch (err) {
     console.error('Error fetching auction:', err);
     res.status(500).json({ error: 'Internal server error' });
