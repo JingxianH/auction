@@ -394,6 +394,7 @@ app.get('/api/users/me/auctions', authenticate_token, async (req, res) => {
           a.status,
           a.creator_id,
           a.winner_id,
+          a.is_private,
           MAX(b.amount) AS highest_bid
         FROM auctions a
         LEFT JOIN bids b ON a.id = b.auction_id
