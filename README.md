@@ -2,10 +2,36 @@
 
 ECE1779 Intro to Cloud Computing  
 Team Members:
-- Felipe Solano
-- Jingxian Hou
+- Jingxian Hou - 1001159710
+- Felipe Solano - 1002752032
 
 This repository contains the implementation of a stateful auction platform API built with Node.js, Express, and PostgreSQL. The application includes an API server and a background worker for handling auction logic.
+
+## Motivation
+[motivation text]
+
+## Objectives
+The main objective of this project was to design and deploy a stateful cloud-native auction platform that supports multi user bidding. Our team aimed to:
+- support user registration and login
+- allow users to create, browse, edit, and cancel auctions
+- ensure bidding remains correct under concurrent access
+- close auctions reliably using background processing
+- persist application data using PostgreSQL
+- deploy the application on DigitalOcean Kubernetes
+- include operational features such as monitoring, backup/recovery, and CI/CD
+- provide a simple UI to demonstrate the main workflows
+
+## Technical Stack
+- **Frontend:** Static HTML, CSS, and JavaScript served by Express
+- **Backend:** Node.js with Express
+- **Database:** PostgreSQL
+- **Authentication:** JWT and bcrypt
+- **Local development:** Docker Compose
+- **Cloud deployment:** DigitalOcean Kubernetes
+- **Infrastructure provisioning:** Terraform
+- **Background processing:** Dedicated worker container for auction lifecycle tasks
+- **Monitoring:** Prometheus-style `/metrics` endpoint and cloud monitoring setup
+- **Notifications:** Resend email integration
 
 ## Prerequisites
 
