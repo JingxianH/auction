@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken'); // to create and check login tokens
+const jwt = require('jsonwebtoken'); 
 const { Resend } = require('resend');
 const promClient = require('prom-client');
 
@@ -10,9 +10,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ---------------------------------------------------------------------------
-// Prometheus metrics setup
-// ---------------------------------------------------------------------------
+
 const register = new promClient.Registry();
 promClient.collectDefaultMetrics({ register }); 
 
@@ -37,7 +35,6 @@ const activeAuctions = new promClient.Gauge({
   registers: [register],
 });
 
-// Middleware: record duration and count for every request
 app.use((req, res, next) => {
   const end = httpRequestDuration.startTimer();
   res.on('finish', () => {
@@ -90,9 +87,6 @@ async function canUserAccessAuction(auctionId, userId) {
   };
 }
 
-// ---------------------------------------------------------------------------
-
-// Email client for bid notifications (uses HTTPS, no SMTP port needed)
 const resend = new Resend(process.env.RESEND_API_KEY);
 const EMAIL_FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 
@@ -107,19 +101,16 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me'; // secret for signing JWT tokens
 
 app.get('/health', (req, res) => {
-  res.status(200).send('Auction API is healthy - CI/CD Automation Successful!');
+  res.status(200).send('API is HEALTHY');
 });
 
-  // Prometheus metrics endpoint — scraped by DigitalOcean / Prometheus
   app.get('/metrics', async (req, res) => {
     try {
-      // Refresh active auction gauge on every scrape
       const result = await pool.query(
         "SELECT COUNT(*) FROM auctions WHERE status = 'active' AND end_time > NOW()"
       );
       activeAuctions.set(parseInt(result.rows[0].count, 10));
     } catch (_) {
-      // DB unavailable — leave gauge at last known value
     }
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
