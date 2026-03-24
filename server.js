@@ -101,7 +101,7 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me'; // secret for signing JWT tokens
 
 app.get('/health', (req, res) => {
-  res.status(200).send('API is HEALTHY');
+  res.status(200).send('API is HEALTHY DEMO CI/CD !!!!!!!!!!!');
 });
 
   app.get('/metrics', async (req, res) => {
