@@ -268,8 +268,15 @@
           <div class="metric-card"><div class="metric-label">Event Loop P99</div><div id="m-loop" class="metric-value">-</div></div>
           <div class="metric-card"><div class="metric-label">Health Checks</div><div id="m-health" class="metric-value">-</div></div>
           <div class="metric-card"><div class="metric-label">Auctions Requests</div><div id="m-auctions-req" class="metric-value">-</div></div>
-          <div class="metric-card"><div class="metric-label">/health Avg Latency</div><div id="m-health-lat" class="metric-value">-</div></div>
           <div class="metric-card"><div class="metric-label">Active Auctions</div><div id="m-active-auctions" class="metric-value">-</div></div>
+        </div>
+        <h3 style="font-size:0.85rem;color:#6b7280;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.05em;">Avg Latency by Route</h3>
+        <div class="monitor-grid">
+          <div class="metric-card"><div class="metric-label">/health</div><div id="m-lat-health" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">/api/auctions</div><div id="m-lat-auctions" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">/api/auctions/:id</div><div id="m-lat-auction-id" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">/api/auctions/:id/bids</div><div id="m-lat-bids" class="metric-value">-</div></div>
+          <div class="metric-card"><div class="metric-label">/api/login</div><div id="m-lat-login" class="metric-value">-</div></div>
         </div>
         <div id="monitor-updated" class="monitor-meta">Last updated: -</div>
 
@@ -286,10 +293,16 @@
               <canvas id="chart-loop" class="chart-canvas"></canvas>
             </div>
           </div>
-          <div class="chart-wrap span-2">
+          <div class="chart-wrap">
             <div class="chart-title">Request Counters</div>
             <div class="chart-panel">
               <canvas id="chart-requests" class="chart-canvas"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-title">Avg Latency by Route (ms)</div>
+            <div class="chart-panel">
+              <canvas id="chart-latency" class="chart-canvas"></canvas>
             </div>
           </div>
         </div>
@@ -393,10 +406,16 @@
       healthReq: [],
       auctionsReq: [],
       activeAuctions: [],
+      latHealth: [],
+      latAuctions: [],
+      latAuctionId: [],
+      latBids: [],
+      latLogin: [],
     };
     let memoryChart = null;
     let loopChart = null;
     let requestsChart = null;
+    let latencyChart = null;
 
     // --- Init ---
     function init() {
@@ -566,6 +585,12 @@
       return Number(v).toFixed(digits);
     }
 
+    function avgLatency(metricsText, route) {
+      const sum = getLabeledMetricValue(metricsText, 'http_request_duration_seconds_sum', ['route="' + route + '"', 'status_code="200"']);
+      const count = getLabeledMetricValue(metricsText, 'http_request_duration_seconds_count', ['route="' + route + '"', 'status_code="200"']);
+      return (sum != null && count) ? sum / count : null;
+    }
+
     function trimHistory() {
       if (monitorHistory.labels.length <= MAX_MONITOR_POINTS) return;
       monitorHistory.labels.shift();
@@ -574,6 +599,11 @@
       monitorHistory.healthReq.shift();
       monitorHistory.auctionsReq.shift();
       monitorHistory.activeAuctions.shift();
+      monitorHistory.latHealth.shift();
+      monitorHistory.latAuctions.shift();
+      monitorHistory.latAuctionId.shift();
+      monitorHistory.latBids.shift();
+      monitorHistory.latLogin.shift();
     }
 
     function initMonitoringCharts() {
@@ -599,7 +629,7 @@
         data: {
           labels: monitorHistory.labels,
           datasets: [{
-            label: 'Resident Memory',
+            label: 'Memory Usage',
             data: monitorHistory.memoryMB,
             borderColor: '#2563eb',
             backgroundColor: 'rgba(37,99,235,0.15)',
@@ -661,13 +691,64 @@
         },
         options: baseOptions,
       });
+
+      latencyChart = new Chart(document.getElementById('chart-latency'), {
+        type: 'line',
+        data: {
+          labels: monitorHistory.labels,
+          datasets: [
+            {
+              label: '/health',
+              data: monitorHistory.latHealth,
+              borderColor: '#059669',
+              backgroundColor: 'rgba(5,150,105,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: '/api/auctions',
+              data: monitorHistory.latAuctions,
+              borderColor: '#7c3aed',
+              backgroundColor: 'rgba(124,58,237,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: '/api/auctions/:id',
+              data: monitorHistory.latAuctionId,
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37,99,235,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: '/api/auctions/:id/bids',
+              data: monitorHistory.latBids,
+              borderColor: '#ea580c',
+              backgroundColor: 'rgba(234,88,12,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+            {
+              label: '/api/login',
+              data: monitorHistory.latLogin,
+              borderColor: '#b91c1c',
+              backgroundColor: 'rgba(185,28,28,0.1)',
+              tension: 0.25,
+              pointRadius: 2,
+            },
+          ],
+        },
+        options: baseOptions,
+      });
     }
 
     function updateMonitoringCharts() {
-      if (!memoryChart || !loopChart || !requestsChart) return;
+      if (!memoryChart || !loopChart || !requestsChart || !latencyChart) return;
       memoryChart.update();
       loopChart.update();
       requestsChart.update();
+      latencyChart.update();
     }
 
     async function loadMonitoring() {
@@ -688,9 +769,11 @@
         const healthReq = getLabeledMetricValue(text, 'http_requests_total', ['route="/health"', 'status_code="200"']);
         const auctionsReq = getLabeledMetricValue(text, 'http_requests_total', ['route="/api/auctions"', 'status_code="200"']);
 
-        const healthLatencySum = getLabeledMetricValue(text, 'http_request_duration_seconds_sum', ['route="/health"', 'status_code="200"']);
-        const healthLatencyCount = getLabeledMetricValue(text, 'http_request_duration_seconds_count', ['route="/health"', 'status_code="200"']);
-        const healthAvgLatency = (healthLatencySum != null && healthLatencyCount) ? (healthLatencySum / healthLatencyCount) : null;
+        const latHealth = avgLatency(text, '/health');
+        const latAuctions = avgLatency(text, '/api/auctions');
+        const latAuctionId = avgLatency(text, '/api/auctions/:id');
+        const latBids = avgLatency(text, '/api/auctions/:id/bids');
+        const latLogin = avgLatency(text, '/api/login');
 
         const nowLabel = new Date().toLocaleTimeString();
         monitorHistory.labels.push(nowLabel);
@@ -699,6 +782,11 @@
         monitorHistory.healthReq.push(healthReq);
         monitorHistory.auctionsReq.push(auctionsReq);
         monitorHistory.activeAuctions.push(activeAuctions);
+        monitorHistory.latHealth.push(latHealth == null ? null : Number((latHealth * 1000).toFixed(3)));
+        monitorHistory.latAuctions.push(latAuctions == null ? null : Number((latAuctions * 1000).toFixed(3)));
+        monitorHistory.latAuctionId.push(latAuctionId == null ? null : Number((latAuctionId * 1000).toFixed(3)));
+        monitorHistory.latBids.push(latBids == null ? null : Number((latBids * 1000).toFixed(3)));
+        monitorHistory.latLogin.push(latLogin == null ? null : Number((latLogin * 1000).toFixed(3)));
         trimHistory();
         updateMonitoringCharts();
 
@@ -707,8 +795,12 @@
         document.getElementById('m-loop').textContent = secondsToMs(loopP99);
         document.getElementById('m-health').textContent = numberOrDash(healthReq, 0);
         document.getElementById('m-auctions-req').textContent = numberOrDash(auctionsReq, 0);
-        document.getElementById('m-health-lat').textContent = secondsToMs(healthAvgLatency);
         document.getElementById('m-active-auctions').textContent = numberOrDash(activeAuctions, 0);
+        document.getElementById('m-lat-health').textContent = secondsToMs(latHealth);
+        document.getElementById('m-lat-auctions').textContent = secondsToMs(latAuctions);
+        document.getElementById('m-lat-auction-id').textContent = secondsToMs(latAuctionId);
+        document.getElementById('m-lat-bids').textContent = secondsToMs(latBids);
+        document.getElementById('m-lat-login').textContent = secondsToMs(latLogin);
 
         document.getElementById('monitor-updated').textContent = 'Last updated: ' + new Date().toLocaleString();
         msg.textContent = 'Live metrics from /metrics (auto-refresh every 15s).';
