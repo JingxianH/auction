@@ -1,180 +1,123 @@
-# Cloud-Native Auction Platform
+# Cloud-Native Auction Platform — Final Report
 
-ECE1779 Intro to Cloud Computing  
-Team Members:
-- Jingxian Hou - 1001159710
-- Felipe Solano - 1002752032
+**ECE1779 Introduction to Cloud Computing — Group 2**
 
-This repository contains the implementation of a stateful auction platform API built with Node.js, Express, and PostgreSQL. The application includes an API server and a background worker for handling auction logic.
+## Team Information
+
+| Name | Student Number | Email |
+|------|---------------|-------|
+| Jingxian Hou | 1001159710 | jingxian.hou@mail.utoronto.ca |
+| Felipe Solano | 1002752032 | felipe.solano@mail.utoronto.ca |
 
 ## Motivation
-[motivation text]
+
+Our team chose to build a stateful auction platform that supports "flash-sale" style auctions. Our system allows bidders to follow sellers like famous artists; this feature can lead to spikes in traffic when a popular seller starts an auction. The problem this addresses is straightforward: many general-purpose marketplace tools are not designed for safe bidding under concurrency, which can lead to incorrect outcomes such as duplicate winners or inconsistent bid histories.
+
+Our target users are small merchants and independent crafters who want a simple way to run short, time-boxed auctions without relying on complex platforms. Building this project gave us the opportunity to tackle real-world challenges in data consistency, system availability, and Kubernetes-based orchestration—all directly aligned with the course objectives.
 
 ## Objectives
-The main objective of this project was to design and deploy a stateful cloud-native auction platform that supports multi user bidding. Our team aimed to:
-- support user registration and login
-- allow users to create, browse, edit, and cancel auctions
-- ensure bidding remains correct under concurrent access
-- close auctions reliably using background processing
-- persist application data using PostgreSQL
-- deploy the application on DigitalOcean Kubernetes
-- include operational features such as monitoring, backup/recovery, and CI/CD
-- provide a simple UI to demonstrate the main workflows
+
+The main objective was to design and deploy a stateful cloud-native auction platform that:
+
+- Supports user registration, JWT-based authentication, and profile management. The user should be able to follow other users
+- Allows users to create, browse, edit, and cancel auctions (including private auctions visible only to followers)
+- Ensures bidding correctness under concurrent access using PostgreSQL transactions and row-level locking. 
+- Builds a backend long-running worker that monitors the life cycle of each auction, assigns winners for completed auctions, and integrates with a third-party application to send out email notifications
+- Persists all application data in PostgreSQL with durable storage. The database snapshots will be backed up in DigitalOcean Spaces and allow developers to easily recover the database
+- Deploys on DigitalOcean Kubernetes with rolling updates, health probes, and autoscaling
+- Includes operational features: CI/CD pipeline through github action and terraform, monitoring with Prometheus-style metrics, automated database backup/recovery, and email notifications
 
 ## Technical Stack
-- **Frontend:** Static HTML, CSS, and JavaScript served by Express
-- **Backend:** Node.js with Express
-- **Database:** PostgreSQL
-- **Authentication:** JWT and bcrypt
-- **Local development:** Docker Compose
-- **Cloud deployment:** DigitalOcean Kubernetes
-- **Infrastructure provisioning:** Terraform
-- **Background processing:** Dedicated worker container for auction lifecycle tasks
-- **Monitoring:** Prometheus-style `/metrics` endpoint and cloud monitoring setup
-- **Notifications:** Resend email integration
 
-## Prerequisites
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Static HTML, CSS, JavaScript (served by Express) with Chart.js for monitoring dashboards |
+| **Backend** | Node.js with Express |
+| **Database** | PostgreSQL 15 (Alpine) |
+| **Authentication** | JWT (jsonwebtoken) + bcrypt for password hashing |
+| **Email Notifications** | Resend API |
+| **Monitoring** | prom-client (Prometheus metrics), custom `/metrics` endpoint, Chart.js dashboards |
+| **Containerization** | Docker, Docker Compose (local development) |
+| **Orchestration** | Kubernetes (DigitalOcean Managed Kubernetes) |
+| **Infrastructure Provisioning** | Terraform (DigitalOcean provider) |
+| **CI/CD** | GitHub Actions |
+| **Backup Storage** | DigitalOcean Spaces (S3-compatible object storage) |
+| **Container Registry** | Docker Hub |
 
-- Node.js (v18 or later)
-- Docker and Docker Compose
-- For deployment: DigitalOcean account, kubectl, doctl (DigitalOcean CLI)
+### Orchestration Approach: Kubernetes
 
-## Local Development
+We chose Kubernetes over Docker Swarm because Kubernetes is the industry standard for container orchestration and provides mature lifecycle management features. Our Kubernetes deployment includes:
 
-### Running with Docker Compose
+- **API Deployment** with 2 replicas, rolling update strategy, liveness/readiness probes, and a Horizontal Pod Autoscaler (HPA) scaling from 2–6 replicas at 70% CPU
+- **PostgreSQL StatefulSet** with a PersistentVolumeClaim backed by DigitalOcean Block Storage for data durability across pod restarts
+- **Worker Deployment** — The worker pod monitors the life cycle of each auction; it is a long-running worker that performs a scan on active auctions
+- **Cron Job** — The cron job is triggered by Kubernetes every day at midnight. It takes a snapshot of the PostgreSQL database and uploads the snapshot to DigitalOcean Spaces
+- **Kubernetes Secrets** — These store database credentials, JWT secret, and email API keys
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd auction
-   ```
 
-2. Start the services:
-   ```bash
-   docker-compose up --build
-   ```
+## Features
 
-   This will start:
-   - API server on `http://localhost:3000`
-   - PostgreSQL database on `localhost:5432`
-   - Background worker
+### Core Features
 
-3. The database will be initialized with the schema from `init.sql`.
+1. **User Accounts** — Users can register an account with a username, password, and email address that is used for notifications. We are using JWT-based authentication. Passwords are hashed with bcrypt (10 salt rounds). In addition, users can follow other users to join private auctions.
 
-### API Endpoints (local)
+2. **Auction Management** — Authenticated users can create auctions with a title, description, starting price, and end time. Auctions can be edited (if no bids exist for price changes) or cancelled by the creator. Auctions support a **private mode** visible only to the creator's followers.
 
-#### Authentication
-- `POST /api/register` – create a new user
-- `POST /api/login` – authenticate and receive a JWT
+3. **Concurrent Bidding** — Bids are placed within a PostgreSQL transaction using `SELECT ... FOR UPDATE` row-level locking on the auction row. This prevents race conditions and ensures only one valid highest bid exists at any time. The server timestamp is the source of truth for auction expiration. Bids below the current highest or on expired/inactive auctions are rejected.
 
-#### Auctions
-- `POST /api/auctions` – create a new auction (requires `Authorization: Bearer <token>`)
-- `GET /api/auctions` – list auctions (supports `?status=active|completed` and `?search=...`)
-- `GET /api/auctions/:id` – get auction details (includes current highest bid)
+4. **Background Worker** — A dedicated worker container polls for completed auctions, determines winners, updates auction status, and sends email notifications. This is done through a third-party email service provider called Resend. It uses `FOR UPDATE SKIP LOCKED` to safely process auctions without conflicting with the API server. The transactional outbox pattern is used for reliable email delivery tracking.
 
-#### Bids
-- `POST /api/auctions/:id/bids` – place a bid (requires `Authorization: Bearer <token>`)
-- `GET /api/auctions/:id/bids` – list bid history for an auction
+5. **Follow/Unfollow System** — Users can follow other users. Private auctions are only visible to followers of the creator. Access control is enforced on all auction views and bid placements. This is the core feature that makes our platform different from any other auction website
 
-### Winner notification via email
+### Advanced Features
 
-The worker now sends an email to the winner when an auction is marked `completed`.
-Required environment variables for SMTP:
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_SECURE` (true/false)
-- `SMTP_USER`
-- `SMTP_PASS`
-- `EMAIL_FROM`
+6. **CI/CD Pipeline (GitHub Actions)** — We achieve CI/CD with GitHub Actions and Terraform scripts to provision our infrastructure. Every time a feature branch is merged to `main`, the pipeline performs the following steps to deploy the application to production:
+   - Runs Terraform to ensure infrastructure is up to date (cluster, Spaces bucket, monitoring alerts)
+   - Builds and pushes the Docker image to Docker Hub
+   - Deploys to Kubernetes by applying manifests, running schema migrations, and restarting deployments
+   - Verifies rollout status with `kubectl rollout status` (300s timeout)
 
-Add these to your Docker Compose / Kubernetes secret configuration before starting the worker.
+7. **Backup and Recovery** — A Kubernetes CronJob runs daily `pg_dump` backups and uploads them to DigitalOcean Spaces, this job runs every day at midnight to generate the snapshot. The recovery process is purely manual; this is by design to avoid the system accidentally overwriting production data when there is a false alert.  A separate restore Job (`restore-job.yaml`) can restore the database from the latest backup in the bucket. The restore process drops and recreates the schema, then replays the SQL dump.
 
-## Prerequisites
-* **DigitalOcean Account** with a Read/Write Personal Access Token (PAT).
-* **Installed Tools:** `terraform`, `kubectl`, and `doctl`.
+8. **Email Notifications (Resend)** — The platform sends emails for:
+   - New bids on an auction (notifies the seller)
+   - Auction completion (notifies winner, seller, and all losing bidders)
+   - Auction expiration with no bids (notifies the seller)
+   
+   Email credentials are stored in Kubernetes Secrets. Notifications are sent after the database transaction commits to ensure consistency.
 
-## 1. Provision the Infrastructure (Terraform)
-We use Terraform to automatically build a cost-optimized Kubernetes cluster on DigitalOcean.
+9. **Monitoring Dashboard** — The app exposes a Prometheus-compatible `/metrics` endpoint tracking:
+   - HTTP request counts and durations (by method, route, status code)
+   - Active auction count
+   - Node.js process metrics (CPU, memory, event loop lag)
+   
+   The frontend includes a real-time monitoring tab with metric cards, latency breakdowns by route, and live-updating Chart.js graphs for memory, event loop P99, request counters, and per-route latency.
 
-```bash
-# Export your DigitalOcean token
-export DIGITALOCEAN_TOKEN="your_personal_access_token_here"
+10. **Infrastructure Monitoring Alerts** — Terraform provisions DigitalOcean monitoring alerts for CPU > 80%, memory > 80%, and disk > 80% on cluster nodes, with email notifications.
 
-# Initialize Terraform and build the cluster (takes ~5-8 minutes)
-terraform init
-terraform apply -auto-approve
-```
-## SET up tokens
-```
-doctl kubernetes cluster kubeconfig save auction-cluster --access-token "$DIGITALOCEAN_TOKEN"
-```
+11. **Horizontal Pod Autoscaler** — The API deployment scales automatically between 2 and 6 replicas based on CPU utilization (target: 70%).
 
-## Deployment
-```
+## Individual Contributions
 
-`# 1. Create database secrets
-kubectl create secret generic db-secrets \
-  --from-literal=POSTGRES_USER=postgres \
-  --from-literal=POSTGRES_PASSWORD=SuperSecret123 \
-  --from-literal=POSTGRES_DB=auctiondb
+### Jingxian Hou
 
-# 2. Create application secrets (JWT + SMTP email)
-kubectl create secret generic app-secrets \
-  --from-literal=JWT_SECRET=<your-jwt-secret> \
-  --from-literal=SMTP_HOST=smtp.gmail.com \
-  --from-literal=SMTP_PORT=587 \
-  --from-literal=SMTP_USER=<your-email@gmail.com> \
-  --from-literal=SMTP_PASS=<your-gmail-app-password> \
-  --from-literal=EMAIL_FROM=<your-email@gmail.com>
+- Designed and implemented the core backend API (auction CRUD, bid placement with concurrent access control)
+- Implemented the follow/unfollow system and private auction access control
+- Designed and wrote the PostgreSQL schema (`init.sql`) with indexing and constraints
+- Configured Kubernetes deployment manifests (`k8s-deploy.yaml`): StatefulSet, Deployments, PVC, HPA, health probes
+- Set up Terraform for infrastructure provisioning and monitoring alerts
+- Implemented the backup CronJob and restore Job for database recovery
+- Built the frontend UI (`index.html`) with monitoring dashboard and Chart.js integration
+- Wrote the final report and project documentation
 
-# 3. Deploy API, Worker, and Database
-kubectl apply -f k8s-deploy.yaml
+### Felipe Solano
 
-# 3. Apply infrastructure hotfixes (fixes DO block storage and K8s networking conflicts)
-kubectl set env statefulset/postgres PGDATA=/var/lib/postgresql/data/pgdata
-kubectl set env deployment/worker DB_PORT=5432
-kubectl set env deployment/api DB_PORT=5432
-kubectl delete pod postgres-0
+- Implemented user registration, login, and JWT authentication
+- Developed the background worker (`worker.js`) for auction lifecycle management
+- Integrated the Resend email service for winner, seller, loser, and expiration notifications
+- Implemented the transactional outbox pattern for reliable notification delivery
+- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
+- Configured Docker Hub image builds and automated Kubernetes deployments
+- Performed backup/recovery testing and validation
+- Contributed to project documentation and proposal
 
-```
-
-## Initialize database
-
-```
-kubectl exec -i postgres-0 -- psql -U postgres -d auctiondb < init.sql
-```
-
-## TEST
-```
-# Find the EXTERNAL-IP
-kubectl get nodes -o wide
-
-# Send a POST request (Replace <EXTERNAL-IP> with the IP from above)
-curl -X POST http://<EXTERNAL-IP>:30000/api/auctions \
--H "Content-Type: application/json" \
--d '{
-  "title": "Reviewer Test Auction",
-  "description": "Testing the deployment pipeline",
-  "starting_price": 50.00,
-  "end_time": "2026-03-15T12:00:00.000Z", 
-  "creator_id": 1
-}'
-```
-
-## Tear down
-
-```
-terraform destroy -auto-approve
-```
-
-## Create the schedule
-
-```
-kubectl apply -f backup-cronjob.yaml
-```
-
-## Create the job
-
-```
-kubectl create job --from=cronjob/db-backup manual-test-backup
-```

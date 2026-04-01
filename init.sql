@@ -57,6 +57,14 @@ CREATE TABLE IF NOT EXISTS outbox_notifications (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Persistent Prometheus metrics snapshots (survive deployments)
+CREATE TABLE IF NOT EXISTS metrics_snapshots (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    metrics_json JSONB NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CHECK (id = 1)
+);
+
 -- Insert a mock user for testing
 INSERT INTO users (username, password_hash, email) 
 VALUES ('testuser', 'hashedpassword123', 'testuser@example.com') 

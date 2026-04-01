@@ -35,6 +35,109 @@ const activeAuctions = new promClient.Gauge({
   registers: [register],
 });
 
+const PERSISTED_METRIC_NAMES = new Set([
+  'http_requests_total',
+  'http_request_duration_seconds',
+]);
+
+const METRICS_FLUSH_INTERVAL_MS = Number.parseInt(
+  process.env.METRICS_FLUSH_INTERVAL_MS || '15000',
+  10
+);
+
+async function ensureMetricsSnapshotTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS metrics_snapshots (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      metrics_json JSONB NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      CHECK (id = 1)
+    )
+  `);
+}
+
+async function saveMetricsSnapshot() {
+  try {
+    const metricsJSON = await register.getMetricsAsJSON();
+    const persistedMetrics = metricsJSON.filter((metric) =>
+      PERSISTED_METRIC_NAMES.has(metric.name)
+    );
+
+    await pool.query(
+      `INSERT INTO metrics_snapshots (id, metrics_json, updated_at)
+       VALUES (1, $1, NOW())
+       ON CONFLICT (id) DO UPDATE
+         SET metrics_json = $1, updated_at = NOW()`,
+      [JSON.stringify(persistedMetrics)]
+    );
+  } catch (err) {
+    console.error('Failed to save metrics snapshot:', err.message);
+  }
+}
+
+async function restoreMetricsFromSnapshot() {
+  try {
+    const result = await pool.query(
+      'SELECT metrics_json FROM metrics_snapshots WHERE id = 1'
+    );
+    if (result.rows.length === 0) return;
+
+    const snapshot = Array.isArray(result.rows[0].metrics_json)
+      ? result.rows[0].metrics_json
+      : [];
+
+    for (const metric of snapshot) {
+      if (metric.name === 'http_requests_total' && metric.type === 'counter') {
+        for (const val of metric.values) {
+          httpRequestsTotal.inc(val.labels, val.value);
+        }
+      }
+      if (metric.name === 'http_request_duration_seconds' && metric.type === 'histogram') {
+        const groups = {};
+        for (const val of metric.values) {
+          const key = JSON.stringify(
+            Object.fromEntries(
+              Object.entries(val.labels).filter(([k]) => k !== 'le')
+            )
+          );
+          if (!groups[key]) groups[key] = { labels: {}, sum: 0, count: 0 };
+          if (val.metricName === 'http_request_duration_seconds_sum') {
+            groups[key].sum = val.value;
+            groups[key].labels = val.labels;
+          }
+          if (val.metricName === 'http_request_duration_seconds_count') {
+            groups[key].count = val.value;
+          }
+        }
+        for (const g of Object.values(groups)) {
+          if (g.count > 0 && Number.isFinite(g.sum)) {
+            const avg = g.sum / g.count;
+            for (let i = 0; i < g.count; i++) {
+              httpRequestDuration.observe(g.labels, avg);
+            }
+          }
+        }
+      }
+    }
+    console.log('Restored metrics from database snapshot');
+  } catch (err) {
+    console.error('Failed to restore metrics snapshot:', err.message);
+  }
+}
+
+const METRICS_FLUSH_INTERVAL = setInterval(
+  saveMetricsSnapshot,
+  METRICS_FLUSH_INTERVAL_MS
+);
+
+function handleShutdown(signal) {
+  console.log(`Received ${signal}, flushing metrics before exit...`);
+  clearInterval(METRICS_FLUSH_INTERVAL);
+  saveMetricsSnapshot().finally(() => process.exit(0));
+}
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+
 app.use((req, res, next) => {
   const end = httpRequestDuration.startTimer();
   res.on('finish', () => {
@@ -902,6 +1005,12 @@ app.get('/api/me/bids', authenticate_token, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  try {
+    await ensureMetricsSnapshotTable();
+    await restoreMetricsFromSnapshot();
+  } catch (err) {
+    console.error('Metrics persistence startup failed:', err.message);
+  }
 });
