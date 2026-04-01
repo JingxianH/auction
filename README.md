@@ -42,7 +42,7 @@ The main objective was to design and deploy a stateful cloud-native auction plat
 | **Infrastructure Provisioning** | Terraform (DigitalOcean provider) |
 | **CI/CD** | GitHub Actions |
 | **Backup Storage** | DigitalOcean Spaces (S3-compatible object storage) |
-| **Container Registry** | Docker Hub |
+| **Container Registry** | Dockeqr Hub |
 
 ### Orchestration Approach: Kubernetes
 
@@ -101,23 +101,233 @@ We chose Kubernetes over Docker Swarm because Kubernetes is the industry standar
 
 ### Jingxian Hou
 
-- Designed and implemented the core backend API (auction CRUD, bid placement with concurrent access control)
-- Implemented the follow/unfollow system and private auction access control
-- Designed and wrote the PostgreSQL schema (`init.sql`) with indexing and constraints
+- Designed and implemented major parts of the core backend API, including auction CRUD and concurrency-safe bid placement
+- Led the PostgreSQL schema design and maintained related database/infrastructure updates
 - Configured Kubernetes deployment manifests (`k8s-deploy.yaml`): StatefulSet, Deployments, PVC, HPA, health probes
 - Set up Terraform for infrastructure provisioning and monitoring alerts
 - Implemented the backup CronJob and restore Job for database recovery
 - Built the frontend UI (`index.html`) with monitoring dashboard and Chart.js integration
-- Wrote the final report and project documentation
+- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
+- Integrated the Resend email service for winner, seller, loser, and expiration notifications
+- Contributed to the final report and project documentation
 
 ### Felipe Solano
 
-- Implemented user registration, login, and JWT authentication
-- Developed the background worker (`worker.js`) for auction lifecycle management
-- Integrated the Resend email service for winner, seller, loser, and expiration notifications
-- Implemented the transactional outbox pattern for reliable notification delivery
-- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
-- Configured Docker Hub image builds and automated Kubernetes deployments
+- Implemented authentication flows, including user registration, login, password hashing with bcrypt, and JWT-based route protection
+- Implemented authenticated user API endpoints for profile, My Auctions, and My Bids views
+- Contributed to the database schema in (`init.sql`), including the private-auction flag, follower relationships, and related schema fixes
+- Implemented the private auctions feature across schema, backend, and frontend
+- Added follow/unfollow functionality and related authorization helpers for follower-based private auction access control
+- Implemented private auction visibility restrictions in listing, detail, bid history, and bidding flows
+- Added logic for user bids and updated the UI to show Winning/Outbid status
+- Fixed frontend refresh and state issues for login/logout and user-specific views
 - Performed backup/recovery testing and validation
-- Contributed to project documentation and proposal
+- Contributed to testing, demo preparation, and technical documentation for the final submission
 
+
+## User Guide
+
+This section explains how to use the main features through the web interface.
+
+### 1. Register and Log In
+
+New users can create an account from the home page. Existing users can log in with their username and password.
+
+Steps:
+1. Open the application in your browser.
+2. In the **Register** box, enter a username, email, and password, then click **Register**.
+3. After registering, use the **Login** box to sign in.
+4. Once logged in, the navigation bar shows the current username and the main application tabs.
+
+// photo here
+
+### 2. Browse Auctions
+
+Users can browse auctions from the **Browse Auctions** tab.
+
+Steps:
+1. Open the **Browse Auctions** tab.
+2. Use the search bar to search by title.
+3. Use the status filter to view active or completed auctions.
+4. Click an auction card to open its details.
+
+Public auctions are visible to all users. Private auctions are visible only to the seller and users who follow that seller.
+
+// photo here
+
+### 3. Create an Auction
+
+Authenticated users can create a new auction.
+
+Steps:
+1. Open the **Create Auction** tab.
+2. Enter the auction title, description, starting price, and end time.
+3. Click **Create Auction**.
+4. The new auction appears in the auction list and in **My Auctions**.
+
+### 4. Create a Private Auction
+
+Users can create a private auction that is visible only to followers of the seller.
+
+Steps:
+1. Open the **Create Auction** tab.
+2. Fill in the auction details.
+3. Check **Make this auction private**.
+4. Click **Create Auction**.
+
+Private auctions are shown with a **Private** badge in the interface.
+
+// photo here
+
+### 5. Follow or Unfollow a Seller
+
+Users can follow another seller to gain access to that seller’s private auctions.
+
+Steps:
+1. Open an auction created by another user.
+2. On the auction detail page, click **Follow Seller**.
+3. After following, private auctions from that seller become visible to your account.
+4. To remove that access, click **Unfollow Seller**.
+
+// photo here
+
+### 6. View an Auction and Place a Bid
+
+Users can open an auction to view details and place bids.
+
+Steps:
+1. Click an auction from the browse page, **My Auctions**, or **My Bids**.
+2. Review the title, description, starting price, current highest bid, and end time.
+3. Enter a bid amount and click **Bid**.
+
+The system only accepts bids that are higher than the current highest bid. Sellers cannot bid on their own auctions. Private auction bidding is limited to authorized users.
+
+// photo here
+
+### 7. View My Auctions
+
+The **My Auctions** tab shows all auctions created by the logged-in user.
+
+Steps:
+1. Open the **My Auctions** tab.
+2. Review created auctions, their status, and the current highest bid.
+3. Open an auction to view details and seller actions.
+
+### 8. View My Bids
+
+The **My Bids** tab shows the user’s bidding history.
+
+Steps:
+1. Open the **My Bids** tab.
+2. Review each bid, the related auction, the auction status, and whether the bid is currently **Winning** or **Outbid**.
+3. Click a row to reopen the related auction page.
+
+// photo here
+
+### 9. Update Profile
+
+Users can update their email address from the **Profile** tab.
+
+Steps:
+1. Open the **Profile** tab.
+2. Update the email field.
+3. Click **Update Email**.
+
+### 10. View Monitoring Metrics
+
+The **Monitoring** tab displays application metrics collected from the `/metrics` endpoint.
+
+Steps:
+1. Open the **Monitoring** tab.
+2. Review summary cards, charts, and raw metrics output.
+3. Use this page to observe request activity, latency, memory usage, and active auction counts.
+
+// photo here
+
+## Development Guide
+
+This section explains how to set up the project for local development and testing.
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+- Node.js (optional for local inspection, but Docker Compose is the main development path)
+
+Docker Compose is the main local development workflow for this project
+
+### Environment Configuration
+
+Create a `.env` file in the project root with the required environment variables:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_DB=auctiondb
+JWT_SECRET=your_jwt_secret
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM=your_verified_sender_email
+WORKER_INTERVAL_MS=30000
+```
+
+These variables are used by the API, worker, and database services.
+
+### Local Architecture
+
+The local setup runs three services through Docker Compose:
+
+- **api**: the Node.js/Express backend, available on port `3000`
+- **worker**: the background worker for auction lifecycle processing
+- **db**: the PostgreSQL database, available on port `5432`
+
+### Database Initialization and Storage
+
+The PostgreSQL container loads the schema automatically from `init.sql` when the database starts for the first time.
+
+A named Docker volume is used to keep database data between container restarts.
+
+### Start the Application
+
+From the project root, run:
+
+```bash
+docker-compose up --build
+```
+This starts:
+
+- the API at `http://localhost:3000`
+- the PostgreSQL database at `localhost:5432`
+- the worker service
+
+### Local Testing
+
+After the containers start:
+
+1. Open `http://localhost:3000` in a browser.
+2. Register a user and log in.
+3. Create a public or private auction.
+4. Use a second account to test following and bidding flows.
+5. Open the `Monitoring` tab to inspect metrics from `/metrics`.
+
+### Stop the Application
+
+To stop the local services:
+
+```bash
+docker-compose down
+```
+To stop the services and remove the database volume:
+
+```bash
+docker-compose down -v
+```
+
+### Notes
+- Email notifications require valid Resend credentials.
+- If the database volume already exists, changes in `init.sql` will not be applied automatically unless the volume is removed and recreated.
+
+## Deployment Information
+
+The live version of the is available at: `http://138.197.168.189:30000/`
+
+The application is deployed on DigitalOcean Kubernetes. The deployment includes the API service, worker service, and PostgreSQL database, with persistent storage for database state and supporting cloud infrastructure for monitoring and backup.
