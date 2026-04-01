@@ -123,3 +123,205 @@ We chose Kubernetes over Docker Swarm because Kubernetes is the industry standar
 - Fixed frontend refresh and state issues for login/logout and user-specific views
 - Performed backup/recovery testing and validation
 - Contributed to testing, demo preparation, and technical documentation for the final submission
+
+
+## User Guide
+
+This section explains how to use the main features through the web interface.
+
+### 1. Register and Log In
+
+New users can create an account from the home page. Existing users can log in with their username and password.
+
+Steps:
+1. Open the application in your browser.
+2. In the **Register** box, enter a username, email, and password, then click **Register**.
+3. After registering, use the **Login** box to sign in.
+4. Once logged in, the navigation bar shows the current username and the main application tabs.
+
+// photo here
+
+### 2. Browse Auctions
+
+Users can browse auctions from the **Browse Auctions** tab.
+
+Steps:
+1. Open the **Browse Auctions** tab.
+2. Use the search bar to search by title.
+3. Use the status filter to view active or completed auctions.
+4. Click an auction card to open its details.
+
+Public auctions are visible to all users. Private auctions are visible only to the seller and users who follow that seller.
+
+// photo here
+
+### 3. Create an Auction
+
+Authenticated users can create a new auction.
+
+Steps:
+1. Open the **Create Auction** tab.
+2. Enter the auction title, description, starting price, and end time.
+3. Click **Create Auction**.
+4. The new auction appears in the auction list and in **My Auctions**.
+
+### 4. Create a Private Auction
+
+Users can create a private auction that is visible only to followers of the seller.
+
+Steps:
+1. Open the **Create Auction** tab.
+2. Fill in the auction details.
+3. Check **Make this auction private**.
+4. Click **Create Auction**.
+
+Private auctions are shown with a **Private** badge in the interface.
+
+// photo here
+
+### 5. Follow or Unfollow a Seller
+
+Users can follow another seller to gain access to that seller’s private auctions.
+
+Steps:
+1. Open an auction created by another user.
+2. On the auction detail page, click **Follow Seller**.
+3. After following, private auctions from that seller become visible to your account.
+4. To remove that access, click **Unfollow Seller**.
+
+// photo here
+
+### 6. View an Auction and Place a Bid
+
+Users can open an auction to view details and place bids.
+
+Steps:
+1. Click an auction from the browse page, **My Auctions**, or **My Bids**.
+2. Review the title, description, starting price, current highest bid, and end time.
+3. Enter a bid amount and click **Bid**.
+
+The system only accepts bids that are higher than the current highest bid. Sellers cannot bid on their own auctions. Private auction bidding is limited to authorized users.
+
+// photo here
+
+### 7. View My Auctions
+
+The **My Auctions** tab shows all auctions created by the logged-in user.
+
+Steps:
+1. Open the **My Auctions** tab.
+2. Review created auctions, their status, and the current highest bid.
+3. Open an auction to view details and seller actions.
+
+### 8. View My Bids
+
+The **My Bids** tab shows the user’s bidding history.
+
+Steps:
+1. Open the **My Bids** tab.
+2. Review each bid, the related auction, the auction status, and whether the bid is currently **Winning** or **Outbid**.
+3. Click a row to reopen the related auction page.
+
+// photo here
+
+### 9. Update Profile
+
+Users can update their email address from the **Profile** tab.
+
+Steps:
+1. Open the **Profile** tab.
+2. Update the email field.
+3. Click **Update Email**.
+
+### 10. View Monitoring Metrics
+
+The **Monitoring** tab displays application metrics collected from the `/metrics` endpoint.
+
+Steps:
+1. Open the **Monitoring** tab.
+2. Review summary cards, charts, and raw metrics output.
+3. Use this page to observe request activity, latency, memory usage, and active auction counts.
+
+// photo here
+
+## Development Guide
+
+This section explains how to set up the project for local development and testing.
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+- Node.js (optional for local inspection, but Docker Compose is the main development path)
+
+Docker Compose is the main local development workflow for this project
+
+### Environment Configuration
+
+Create a `.env` file in the project root with the required environment variables:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_DB=auctiondb
+JWT_SECRET=your_jwt_secret
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM=your_verified_sender_email
+WORKER_INTERVAL_MS=30000
+```
+
+These variables are used by the API, worker, and database services.
+
+### Local Architecture
+
+The local setup runs three services through Docker Compose:
+
+- **api**: the Node.js/Express backend, available on port `3000`
+- **worker**: the background worker for auction lifecycle processing
+- **db**: the PostgreSQL database, available on port `5432`
+
+### Database Initialization and Storage
+
+The PostgreSQL container loads the schema automatically from `init.sql` when the database starts for the first time.
+
+A named Docker volume is used to keep database data between container restarts.
+
+### Start the Application
+
+From the project root, run:
+
+```bash
+docker-compose up --build
+```
+This starts:
+
+- the API at `http://localhost:3000`
+- the PostgreSQL database at `localhost:5432`
+- the worker service
+
+### Local Testing
+
+After the containers start:
+
+1. Open `http://localhost:3000` in a browser.
+2. Register a user and log in.
+3. Create a public or private auction.
+4. Use a second account to test following and bidding flows.
+5. Open the `Monitoring` tab to inspect metrics from `/metrics`.
+
+### Stop the Application
+
+To stop the local services:
+
+```bash
+docker-compose down
+```
+To stop the services and remove the database volume:
+
+```bash
+docker-compose down -v
+```
+
+### Notes
+- Email notifications require valid Resend credentials.
+- If the database volume already exists, changes in `init.sql` will not be applied automatically unless the volume is removed and recreated.
