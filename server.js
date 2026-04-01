@@ -209,6 +209,7 @@ app.get('/health', (req, res) => {
 
   app.get('/metrics', async (req, res) => {
     try {
+      console.log(req)
       const result = await pool.query(
         "SELECT COUNT(*) FROM auctions WHERE status = 'active' AND end_time > NOW()"
       );
@@ -848,7 +849,6 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
       }
     }
 
-    // Enforce auction state & time rules
     if (auction.status !== 'active') {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Auction is not active' });
@@ -859,7 +859,6 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
       return res.status(400).json({ error: 'Auction has already ended' });
     }
 
-    // Determine the current highest bid (or fallback to starting price)
     const highestBidResult = await client.query(
       'SELECT MAX(amount) AS max_amount FROM bids WHERE auction_id = $1',
       [auctionId]
@@ -883,7 +882,6 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
 
     console.log(`User ${userId} placed a bid of ${amount} on auction ${auctionId}`);
 
-    // Send bid notification email to the auction creator (fire-and-forget)
     (async () => {
       try {
         const creatorResult = await pool.query(
@@ -922,7 +920,6 @@ app.post('/api/auctions/:id/bids', authenticate_token, async (req, res) => {
   }
 });
 
-// Get current user profile
 app.get('/api/me', authenticate_token, async (req, res) => {
   try {
     const result = await pool.query(
@@ -939,7 +936,6 @@ app.get('/api/me', authenticate_token, async (req, res) => {
   }
 });
 
-// Update current user profile (email)
 app.put('/api/me', authenticate_token, async (req, res) => {
   const { email } = req.body;
 
@@ -948,7 +944,6 @@ app.put('/api/me', authenticate_token, async (req, res) => {
   }
 
   try {
-    // Check if email already used by another user
     const existing = await pool.query(
       'SELECT id FROM users WHERE email = $1 AND id != $2',
       [email, req.user.id]
@@ -968,7 +963,6 @@ app.put('/api/me', authenticate_token, async (req, res) => {
   }
 });
 
-// Get all bids placed by the logged-in user
 app.get('/api/me/bids', authenticate_token, async (req, res) => {
   try {
     const result = await pool.query(
