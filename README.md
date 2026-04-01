@@ -325,3 +325,9 @@ docker-compose down -v
 ### Notes
 - Email notifications require valid Resend credentials.
 - If the database volume already exists, changes in `init.sql` will not be applied automatically unless the volume is removed and recreated.
+
+## Deployment Information
+
+The live version of the is available at: `http://138.197.168.189:30000/`
+
+The application is deployed on DigitalOcean Kubernetes. The deployment includes the API service, worker service, and PostgreSQL database, with persistent storage for database state and supporting cloud infrastructure for monitoring and backup.
