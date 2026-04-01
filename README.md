@@ -42,7 +42,7 @@ The main objective was to design and deploy a stateful cloud-native auction plat
 | **Infrastructure Provisioning** | Terraform (DigitalOcean provider) |
 | **CI/CD** | GitHub Actions |
 | **Backup Storage** | DigitalOcean Spaces (S3-compatible object storage) |
-| **Container Registry** | Docker Hub |
+| **Container Registry** | Dockeqr Hub |
 
 ### Orchestration Approach: Kubernetes
 
@@ -101,23 +101,25 @@ We chose Kubernetes over Docker Swarm because Kubernetes is the industry standar
 
 ### Jingxian Hou
 
-- Designed and implemented the core backend API (auction CRUD, bid placement with concurrent access control)
-- Implemented the follow/unfollow system and private auction access control
-- Designed and wrote the PostgreSQL schema (`init.sql`) with indexing and constraints
+- Designed and implemented major parts of the core backend API, including auction CRUD and concurrency-safe bid placement
+- Led the PostgreSQL schema design and maintained related database/infrastructure updates
 - Configured Kubernetes deployment manifests (`k8s-deploy.yaml`): StatefulSet, Deployments, PVC, HPA, health probes
 - Set up Terraform for infrastructure provisioning and monitoring alerts
 - Implemented the backup CronJob and restore Job for database recovery
 - Built the frontend UI (`index.html`) with monitoring dashboard and Chart.js integration
-- Wrote the final report and project documentation
+- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
+- Integrated the Resend email service for winner, seller, loser, and expiration notifications
+- Contributed to the final report and project documentation
 
 ### Felipe Solano
 
-- Implemented user registration, login, and JWT authentication
-- Developed the background worker (`worker.js`) for auction lifecycle management
-- Integrated the Resend email service for winner, seller, loser, and expiration notifications
-- Implemented the transactional outbox pattern for reliable notification delivery
-- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
-- Configured Docker Hub image builds and automated Kubernetes deployments
+- Implemented authentication flows, including user registration, login, password hashing with bcrypt, and JWT-based route protection
+- Implemented authenticated user API endpoints for profile, My Auctions, and My Bids views
+- Contributed to the database schema in (`init.sql`), including the private-auction flag, follower relationships, and related schema fixes
+- Implemented the private auctions feature across schema, backend, and frontend
+- Added follow/unfollow functionality and related authorization helpers for follower-based private auction access control
+- Implemented private auction visibility restrictions in listing, detail, bid history, and bidding flows
+- Added logic for user bids and updated the UI to show Winning/Outbid status
+- Fixed frontend refresh and state issues for login/logout and user-specific views
 - Performed backup/recovery testing and validation
-- Contributed to project documentation and proposal
-
+- Contributed to testing, demo preparation, and technical documentation for the final submission
