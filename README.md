@@ -97,34 +97,6 @@ We chose Kubernetes over Docker Swarm because Kubernetes is the industry standar
 
 11. **Horizontal Pod Autoscaler** — The API deployment scales automatically between 2 and 6 replicas based on CPU utilization (target: 70%).
 
-## Individual Contributions
-
-### Jingxian Hou
-
-- Designed and implemented major parts of the core backend API, including auction CRUD and concurrency-safe bid placement
-- Led the PostgreSQL schema design and maintained related database/infrastructure updates
-- Configured Kubernetes deployment manifests (`k8s-deploy.yaml`): StatefulSet, Deployments, PVC, HPA, health probes
-- Set up Terraform for infrastructure provisioning and monitoring alerts
-- Implemented the backup CronJob and restore Job for database recovery
-- Built the frontend UI (`index.html`) with monitoring dashboard and Chart.js integration
-- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
-- Integrated the Resend email service for winner, seller, loser, and expiration notifications
-- Contributed to the final report and project documentation
-
-### Felipe Solano
-
-- Implemented authentication flows, including user registration, login, password hashing with bcrypt, and JWT-based route protection
-- Implemented authenticated user API endpoints for profile, My Auctions, and My Bids views
-- Contributed to the database schema in (`init.sql`), including the private-auction flag, follower relationships, and related schema fixes
-- Implemented the private auctions feature across schema, backend, and frontend
-- Added follow/unfollow functionality and related authorization helpers for follower-based private auction access control
-- Implemented private auction visibility restrictions in listing, detail, bid history, and bidding flows
-- Added logic for user bids and updated the UI to show Winning/Outbid status
-- Fixed frontend refresh and state issues for login/logout and user-specific views
-- Performed backup/recovery testing and validation
-- Contributed to testing, demo preparation, and technical documentation for the final submission
-
-
 ## User Guide
 
 This section explains how to use the main features through the web interface.
@@ -334,25 +306,63 @@ The application is deployed on DigitalOcean Kubernetes. The deployment includes 
 
 ## AI Assistance & Verification
 
-AI tools were used as a support tool during the project, mainly for initial brainstorming, debugging assistance, verification, and writing refinement. 
+AI tools were used as a support tool during the project, mainly for brainstorming, debugging assistance, verification, and writing refinement. 
 
-### How AI Was Used
+Its most meaningful contributions were:
 
-During the project, AI assistance was used for tasks such as:
+- helping us compare feature options and keep the project scope manageable
+- helping us review documentation and feature claims against the actual implementation
+- // add extra
 
-- // add example here
-- assisting with debugging discussions and identifying possible causes of errors
-- helping prepare presentation and demo explanations
+The team critically evaluated AI output before using it. Some AI suggestions were useful as starting points, but others were too broad, not fully applicable to our project, or needed correction after checking the real codebase and repository history. One representative example is documented in `ai-session.md`.
 
 ### Verification Process
 
 All AI-assisted output was reviewed by the team before being used in the project. In particular:
 
-- implementation details were checked against the actual codebase
-- feature claims were compared against the running application and Git history
-- documentation text was revised when AI suggestions did not match the real implementation
-- technical explanations were validated through local testing, deployment artifacts, and manual review
+- manual testing of the implemented features through the web interface and API
+- inspection of backend code, route behavior, and database-related logic
+- checks using logs, metrics, and deployment artifacts where appropriate
 
-### Responsibility and Limitations
+The final design decisions, implementation choices, and documentation remain the responsibility of the team.
 
-The final code, design decisions, testing, and documentation remain the responsibility of the team. Additional AI interaction records are included in `ai-session.md`.
+## Individual Contributions
+
+### Jingxian Hou
+
+- Designed and implemented major parts of the core backend API, including auction CRUD and concurrency-safe bid placement
+- Led the PostgreSQL schema design and maintained related database/infrastructure updates
+- Configured Kubernetes deployment manifests (`k8s-deploy.yaml`): StatefulSet, Deployments, PVC, HPA, health probes
+- Set up Terraform for infrastructure provisioning and monitoring alerts
+- Implemented the backup CronJob and restore Job for database recovery
+- Built the frontend UI (`index.html`) with monitoring dashboard and Chart.js integration
+- Designed and implemented the CI/CD pipeline with GitHub Actions (`deploy.yml`)
+- Integrated the Resend email service for winner, seller, loser, and expiration notifications
+- Contributed to the final report and project documentation
+
+### Felipe Solano
+
+- Implemented authentication flows, including user registration, login, password hashing with bcrypt, and JWT-based route protection
+- Implemented authenticated user API endpoints for profile, My Auctions, and My Bids views
+- Contributed to the database schema in (`init.sql`), including the private-auction flag, follower relationships, and related schema fixes
+- Implemented the private auctions feature across schema, backend, and frontend
+- Added follow/unfollow functionality and related authorization helpers for follower-based private auction access control
+- Implemented private auction visibility restrictions in listing, detail, bid history, and bidding flows
+- Added logic for user bids and updated the UI to show Winning/Outbid status
+- Fixed frontend refresh and state issues for login/logout and user-specific views
+- Performed backup/recovery testing and validation
+- Contributed to testing, demo preparation, and technical documentation for the final submission
+
+## Lessons Learned and Concluding Remarks
+
+This project gave us practical experience building a stateful cloud application where correctness, persistence, and deployment behavior all mattered at the same time.
+
+One of our main lessons was the value of correct state handling. In this project, bids could happen close together, auctions could end at any time, and the system had to keep one correct result. That forced us to think carefully about database transactions, locking, worker logic, and persistent storage.
+
+We also learned that good scope control matters. It was easy to think of more features, but a smaller and clearer scope helped us finish a stronger project. We focused on the parts that matched the course goals most closely: safe bidding, persistent PostgreSQL storage, Kubernetes deployment, monitoring, backup and recovery, and a simple user flow.
+
+Another lesson was that documentation and verification are part of the work. We had to check that our README matched the real implementation. We also had to confirm that our feature claims and deployment notes were accurate.
+
+This project also gave us experience across the full stack. We worked on the API, the database, the frontend, Docker, Kubernetes, and cloud deployment. That helped us see how each part affects the others.
+
+In the end, this project helped us understand how to build a cloud application that is correct, persistent, and easier to test and explain. It showed us the value of keeping the design simple, checking our work carefully, and staying within scope.
