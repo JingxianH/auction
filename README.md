@@ -331,3 +331,28 @@ docker-compose down -v
 The live version of the is available at: `http://138.197.168.189:30000/`
 
 The application is deployed on DigitalOcean Kubernetes. The deployment includes the API service, worker service, and PostgreSQL database, with persistent storage for database state and supporting cloud infrastructure for monitoring and backup.
+
+## AI Assistance & Verification
+
+AI tools were used as a support tool during the project, mainly for initial brainstorming, debugging assistance, verification, and writing refinement. 
+
+### How AI Was Used
+
+During the project, AI assistance was used for tasks such as:
+
+- // add example here
+- assisting with debugging discussions and identifying possible causes of errors
+- helping prepare presentation and demo explanations
+
+### Verification Process
+
+All AI-assisted output was reviewed by the team before being used in the project. In particular:
+
+- implementation details were checked against the actual codebase
+- feature claims were compared against the running application and Git history
+- documentation text was revised when AI suggestions did not match the real implementation
+- technical explanations were validated through local testing, deployment artifacts, and manual review
+
+### Responsibility and Limitations
+
+The final code, design decisions, testing, and documentation remain the responsibility of the team. Additional AI interaction records are included in `ai-session.md`.
