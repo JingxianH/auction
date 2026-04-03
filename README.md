@@ -306,7 +306,7 @@ The application is deployed on DigitalOcean Kubernetes. The deployment includes 
 
 ## AI Assistance & Verification
 
-AI tools were used as a support tool during the project, mainly for brainstorming, debugging assistance, verification, and writing refinement. 
+AI was used mainly for brainstorming, debugging assistance, verification, and writing refinement. 
 
 Its most meaningful contributions were:
 
@@ -360,8 +360,6 @@ This project gave us practical experience building a stateful cloud application 
 One of our main lessons was the value of correct state handling. In this project, bids could happen close together, auctions could end at any time, and the system had to keep one correct result. That forced us to think carefully about database transactions, locking, worker logic, and persistent storage.
 
 We also learned that good scope control matters. It was easy to think of more features, but a smaller and clearer scope helped us finish a stronger project. We focused on the parts that matched the course goals most closely: safe bidding, persistent PostgreSQL storage, Kubernetes deployment, monitoring, backup and recovery, and a simple user flow.
-
-Another lesson was that documentation and verification are part of the work. We had to check that our README matched the real implementation. We also had to confirm that our feature claims and deployment notes were accurate.
 
 This project also gave us experience across the full stack. We worked on the API, the database, the frontend, Docker, Kubernetes, and cloud deployment. That helped us see how each part affects the others.
 
