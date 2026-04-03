@@ -111,23 +111,9 @@ Steps:
 3. After registering, use the **Login** box to sign in.
 4. Once logged in, the navigation bar shows the current username and the main application tabs.
 
-// photo here
+![Register and Login view](screenshots/register-login.png)
 
-### 2. Browse Auctions
-
-Users can browse auctions from the **Browse Auctions** tab.
-
-Steps:
-1. Open the **Browse Auctions** tab.
-2. Use the search bar to search by title.
-3. Use the status filter to view active or completed auctions.
-4. Click an auction card to open its details.
-
-Public auctions are visible to all users. Private auctions are visible only to the seller and users who follow that seller.
-
-// photo here
-
-### 3. Create an Auction
+### 2. Create an Auction
 
 Authenticated users can create a new auction.
 
@@ -137,7 +123,10 @@ Steps:
 3. Click **Create Auction**.
 4. The new auction appears in the auction list and in **My Auctions**.
 
-### 4. Create a Private Auction
+![Create an Auction view](screenshots/create-public-auction+2.png)
+![Create an Auction success view](screenshots/auction-created.png)
+
+### 3. Create a Private Auction
 
 Users can create a private auction that is visible only to followers of the seller.
 
@@ -149,9 +138,9 @@ Steps:
 
 Private auctions are shown with a **Private** badge in the interface.
 
-// photo here
+![Create a Private Auction view](screenshots/create-private-auction.png)
 
-### 5. Follow or Unfollow a Seller
+### 4. Follow or Unfollow a Seller
 
 Users can follow another seller to gain access to that seller’s private auctions.
 
@@ -161,20 +150,42 @@ Steps:
 3. After following, private auctions from that seller become visible to your account.
 4. To remove that access, click **Unfollow Seller**.
 
-// photo here
+![Follow view](screenshots/follow-seller.png)
+![Unfollow view](screenshots/follow-seller-2.png)
+
+### 5. Browse Auctions
+
+Users can browse auctions from the **Browse Auctions** tab.
+
+Steps:
+1. Open the **Browse Auctions** tab.
+2. Use the search bar to search by title.
+3. Use the status filter to view active or completed auctions.
+4. Click an auction card to open its details.
+
+Public auctions are visible to all users. Private auctions are visible only to the seller and users who follow that seller.
+
+**Before following the seller:**
+
+![Browse Auctions public view](screenshots/browse-auctions-1.png)
+
+**After following the seller:**
+
+![Browse Auctions view](screenshots/browse-auctions-after-following.png)
+
 
 ### 6. View an Auction and Place a Bid
 
 Users can open an auction to view details and place bids.
 
 Steps:
-1. Click an auction from the browse page, **My Auctions**, or **My Bids**.
+1. Click an auction from the browse page.
 2. Review the title, description, starting price, current highest bid, and end time.
-3. Enter a bid amount and click **Bid**.
+3. Enter a bid amount and click **Bid**
 
 The system only accepts bids that are higher than the current highest bid. Sellers cannot bid on their own auctions. Private auction bidding is limited to authorized users.
 
-// photo here
+![Place a Bid view](screenshots/place-bid-2.png)
 
 ### 7. View My Auctions
 
@@ -185,6 +196,8 @@ Steps:
 2. Review created auctions, their status, and the current highest bid.
 3. Open an auction to view details and seller actions.
 
+![My Auctions view](screenshots/my-auctions.png)
+
 ### 8. View My Bids
 
 The **My Bids** tab shows the user’s bidding history.
@@ -194,7 +207,7 @@ Steps:
 2. Review each bid, the related auction, the auction status, and whether the bid is currently **Winning** or **Outbid**.
 3. Click a row to reopen the related auction page.
 
-// photo here
+![My Bids view](screenshots/my-bids.png)
 
 ### 9. Update Profile
 
@@ -205,6 +218,8 @@ Steps:
 2. Update the email field.
 3. Click **Update Email**.
 
+![Profile view](screenshots/profile.png)
+
 ### 10. View Monitoring Metrics
 
 The **Monitoring** tab displays application metrics collected from the `/metrics` endpoint.
@@ -214,7 +229,8 @@ Steps:
 2. Review summary cards, charts, and raw metrics output.
 3. Use this page to observe request activity, latency, memory usage, and active auction counts.
 
-// photo here
+![Metrics view](screenshots/monitoring-metrics.png)
+![Metrics cont view](screenshots/monitoring-metrics-2.png)
 
 ## Development Guide
 
