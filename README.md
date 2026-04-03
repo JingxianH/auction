@@ -111,7 +111,7 @@ Steps:
 3. After registering, use the **Login** box to sign in.
 4. Once logged in, the navigation bar shows the current username and the main application tabs.
 
-![Register and Login view](screenshots/register-login.png)
+![Register and Login view](screenshots/register-login.PNG)
 
 ### 2. Create an Auction
 
@@ -123,8 +123,8 @@ Steps:
 3. Click **Create Auction**.
 4. The new auction appears in the auction list and in **My Auctions**.
 
-![Create an Auction view](screenshots/create-public-auction+2.png)
-![Create an Auction success view](screenshots/auction-created.png)
+![Create an Auction view](screenshots/create-public-auction+2.PNG)
+![Create an Auction success view](screenshots/auction-created.PNG)
 
 ### 3. Create a Private Auction
 
@@ -138,7 +138,7 @@ Steps:
 
 Private auctions are shown with a **Private** badge in the interface.
 
-![Create a Private Auction view](screenshots/create-private-auction.png)
+![Create a Private Auction view](screenshots/create-private-auction.PNG)
 
 ### 4. Follow or Unfollow a Seller
 
@@ -150,8 +150,8 @@ Steps:
 3. After following, private auctions from that seller become visible to your account.
 4. To remove that access, click **Unfollow Seller**.
 
-![Follow view](screenshots/follow-seller.png)
-![Unfollow view](screenshots/follow-seller-2.png)
+![Follow view](screenshots/follow-seller.PNG)
+![Unfollow view](screenshots/follow-seller-2.PNG)
 
 ### 5. Browse Auctions
 
@@ -167,11 +167,11 @@ Public auctions are visible to all users. Private auctions are visible only to t
 
 **Before following the seller:**
 
-![Browse Auctions public view](screenshots/browse-auctions-1.png)
+![Browse Auctions public view](screenshots/browse-auctions-1.PNG)
 
 **After following the seller:**
 
-![Browse Auctions view](screenshots/browse-auctions-after-following.png)
+![Browse Auctions view](screenshots/browse-auctions-after-following.PNG)
 
 
 ### 6. View an Auction and Place a Bid
@@ -185,7 +185,7 @@ Steps:
 
 The system only accepts bids that are higher than the current highest bid. Sellers cannot bid on their own auctions. Private auction bidding is limited to authorized users.
 
-![Place a Bid view](screenshots/place-bid-2.png)
+![Place a Bid view](screenshots/place-bid-2.PNG)
 
 ### 7. View My Auctions
 
@@ -196,7 +196,7 @@ Steps:
 2. Review created auctions, their status, and the current highest bid.
 3. Open an auction to view details and seller actions.
 
-![My Auctions view](screenshots/my-auctions.png)
+![My Auctions view](screenshots/my-auctions.PNG)
 
 ### 8. View My Bids
 
@@ -207,7 +207,7 @@ Steps:
 2. Review each bid, the related auction, the auction status, and whether the bid is currently **Winning** or **Outbid**.
 3. Click a row to reopen the related auction page.
 
-![My Bids view](screenshots/my-bids.png)
+![My Bids view](screenshots/my-bids.PNG)
 
 ### 9. Update Profile
 
@@ -218,7 +218,7 @@ Steps:
 2. Update the email field.
 3. Click **Update Email**.
 
-![Profile view](screenshots/profile.png)
+![Profile view](screenshots/profile.PNG)
 
 ### 10. View Monitoring Metrics
 
@@ -229,8 +229,8 @@ Steps:
 2. Review summary cards, charts, and raw metrics output.
 3. Use this page to observe request activity, latency, memory usage, and active auction counts.
 
-![Metrics view](screenshots/monitoring-metrics.png)
-![Metrics cont view](screenshots/monitoring-metrics-2.png)
+![Metrics view](screenshots/monitoring-metrics.PNG)
+![Metrics cont view](screenshots/monitoring-metrics-2.PNG)
 
 ## Development Guide
 
