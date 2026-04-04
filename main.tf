@@ -60,18 +60,15 @@ provider "digitalocean" {
   spaces_secret_key = var.spaces_secret_key
 }
 
-# 1. Reuse existing Kubernetes Cluster by name
 data "digitalocean_kubernetes_cluster" "auction_cluster" {
   name = var.cluster_name
 }
 
-# 2. Generate a random string only when creating a bucket without an explicit name
 resource "random_id" "bucket_suffix" {
   count       = var.create_backup_bucket && trimspace(var.backup_bucket_name) == "" ? 1 : 0
   byte_length = 4
 }
 
-# 3a. Create backup bucket only when explicitly enabled
 resource "digitalocean_spaces_bucket" "auction_backups" {
   count  = var.create_backup_bucket ? 1 : 0
   name   = trimspace(var.backup_bucket_name) != "" ? var.backup_bucket_name : "auction-backups-${try(random_id.bucket_suffix[0].hex, "")}"
@@ -79,7 +76,6 @@ resource "digitalocean_spaces_bucket" "auction_backups" {
   acl    = "private"
 }
 
-# 3b. Reuse existing backup bucket by name (default path for CI)
 data "digitalocean_spaces_bucket" "auction_backups" {
   count  = var.create_backup_bucket || trimspace(var.backup_bucket_name) == "" ? 0 : 1
   name   = var.backup_bucket_name
@@ -98,12 +94,6 @@ output "cluster_id" {
 output "backup_bucket_name" {
   value = local.backup_bucket_name
 }
-
-# ---------------------------------------------------------------------------
-# Monitoring: DigitalOcean Alerts targeting the Kubernetes node pool
-# DOKS automatically tags every node droplet with "k8s:<cluster-id>",
-# so we target that tag to cover all nodes including auto-scaled ones.
-# ---------------------------------------------------------------------------
 
 resource "digitalocean_monitor_alert" "cpu_alert" {
   count = var.enable_monitor_alerts ? 1 : 0

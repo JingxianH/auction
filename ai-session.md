@@ -51,3 +51,72 @@ The AI suggested using bcrypt to hash passwords before storing them in PostgreSQ
 - We verified the approach by implementing registration, login, password hashing, and token-protected routes in the API, then testing them through the frontend and local API calls.
 - We also checked that the final implementation matched the actual needs of the project instead of adding unnecessary complexity.
 
+
+## Session 4: CI/CD approach
+
+### Prompt
+
+We are building a web application deployed on DigitalOcean and orchestrated via Kubernetes. Currently, our cluster runs two API pods, one worker pod, a cron job, and a PostgreSQL database. We use GitHub Actions for our CI/CD pipeline by running kubectl commands to deploy application changes. However, this approach only updates the API workloads and does not manage our underlying cloud infrastructure. What are the best tools and industry-standard practices we can integrate with GitHub Actions to automatically detect and provision changes to both our Kubernetes configurations and our DigitalOcean cloud infrastructure?
+
+### AI Response
+
+Adopt a GitOps approach for your stack:
+- Terraform: Run within GitHub Actions to automatically provision and manage your DigitalOcean infrastructure (managed PostgreSQL, Kubernetes clusters).
+- Argo CD or Flux: Install within your cluster to automatically pull and synchronize Kubernetes configurations directly from your repository.
+
+### What Your Team Did With It
+- Watched couple youtube videos about these two approaches and decided to use terraform
+- This is because Jingxian worked with terraform before and have experience on deploying app to AWS environment throgh terraform script
+- Create a simple main.tf and use GHA to run the terraform script to achieve CI/CD
+
+## Session 5: Secrets and Credentials 
+
+### Prompt
+
+We are using GitHub Actions to run Terraform scripts that deploy infrastructure changes to DigitalOcean. We know we shouldn't hardcode credentials in our Terraform files, and GitHub's secret scanning rightfully blocks commits containing sensitive data. Currently, we have our credentials defined as sensitive variables in our Terraform configuration, for example:
+
+```
+variable "spaces_access_id" {
+  description = "Access key for DigitalOcean Spaces"
+  type        = string
+  sensitive   = true
+}
+```
+
+How do we correctly pass these secrets into our Terraform execution step within the GitHub Actions workflow file without exposing them in logs
+
+### AI Response summary
+
+Store your credentials in GitHub Actions Secrets. In your workflow step, map these secrets to environment variables using the TF_VAR_ prefix. Terraform automatically detects these variables and binds them to your Terraform configuration. GitHub inherently masks any ${{ secrets.* }} values in the execution logs.
+
+```
+YAML
+steps:
+  - name: Terraform Apply
+    run: terraform apply -auto-approve
+    env:
+      # Maps to the "spaces_access_id" variable
+      TF_VAR_spaces_access_id: ${{ secrets.SPACES_ACCESS_ID }}
+```
+
+### What your team did with it
+
+We manually set all our credentials in github variables and we took this yml template and added to our deploy.yml file for github action fetch the correct tokens. 
+
+Example
+```
+   - name: Terraform Apply (Cluster + Spaces + Monitoring Alerts)
+        env:
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          ENABLE_MONITOR_ALERTS: ${{ secrets.ENABLE_MONITOR_ALERTS || 'false' }}
+          CREATE_BACKUP_BUCKET: ${{ secrets.CREATE_BACKUP_BUCKET || 'false' }}
+          BACKUP_BUCKET_NAME: ${{ secrets.BACKUP_BUCKET_NAME }}
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var="spaces_access_id=${{ secrets.SPACES_ACCESS_ID }}" \
+            -var="spaces_secret_key=${{ secrets.SPACES_SECRET_KEY }}" \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -var="enable_monitor_alerts=$ENABLE_MONITOR_ALERTS" \
+            -var="create_backup_bucket=$CREATE_BACKUP_BUCKET" \
+            -var="backup_bucket_name=$BACKUP_BUCKET_NAME"
+```
