@@ -187,7 +187,13 @@ The system only accepts bids that are higher than the current highest bid. Selle
 
 ![Place a Bid view](screenshots/place-bid-2.PNG)
 
-### 7. View My Auctions
+### 7. Email Notifications
+
+The auction owner and the winner will recieve a system generated email notification when the auction is completed. 
+
+![Email Notification](screenshots/email_notification.PNG)
+
+### 8. View My Auctions
 
 The **My Auctions** tab shows all auctions created by the logged-in user.
 
@@ -198,7 +204,7 @@ Steps:
 
 ![My Auctions view](screenshots/my-auctions.PNG)
 
-### 8. View My Bids
+### 9. View My Bids
 
 The **My Bids** tab shows the user’s bidding history.
 
@@ -209,7 +215,7 @@ Steps:
 
 ![My Bids view](screenshots/my-bids.PNG)
 
-### 9. Update Profile
+### 10. Update Profile
 
 Users can update their email address from the **Profile** tab.
 
@@ -220,7 +226,7 @@ Steps:
 
 ![Profile view](screenshots/profile.PNG)
 
-### 10. View Monitoring Metrics
+### 11. View Monitoring Metrics
 
 The **Monitoring** tab displays application metrics collected from the `/metrics` endpoint.
 
