@@ -93,7 +93,7 @@ We chose Kubernetes over Docker Swarm because Kubernetes is the industry standar
    
    The frontend includes a real-time monitoring tab with metric cards, latency breakdowns by route, and live-updating Chart.js graphs for memory, event loop P99, request counters, and per-route latency.
 
-10. **Infrastructure Monitoring Alerts** — Terraform provisions DigitalOcean monitoring alerts for CPU > 80%, memory > 80%, and disk > 80% on cluster nodes, with email notifications.
+10. **Infrastructure Monitoring Alerts** — We use Terraform to provision DigitalOcean monitoring alerts for CPU > 80%, memory > 80%, and disk > 80% on cluster nodes, with email notifications.
 
 11. **Horizontal Pod Autoscaler** — The API deployment scales automatically between 2 and 6 replicas based on CPU utilization (target: 70%).
 
@@ -326,9 +326,11 @@ AI was used mainly for brainstorming, debugging assistance, verification, and wr
 
 Its most meaningful contributions were:
 
-- helping us compare feature options and keep the project scope manageable
-- helping us review documentation and feature claims against the actual implementation
-- // add extra
+- helping us compare feature options and keep the project scope manageable. At the beginning, we wanted to build this project with a Large Language Model with a RAG framework that could give end users recommendations with historical data. However, after brainstorming with AI, we quickly realized that it would be impossible to complete within a month for two developers. It was also not aligned with the project requirements. So we decided to drop the LLM feature, stick with basic functionality, and shift our focus to infrastructure management with Kubernetes and Docker.
+- We also used AI to generate basic boilerplate code, as it is an industry standard tool. We used AI to generate a basic CRUD API template, and we provided the implementation based on how we wanted the APIs to work.
+- We also utilized AI in our debugging process. We hit a major roadblock when we were implementing the GitHub Actions CI/CD functionality. We were hardcoding some of the credentials in Terraform variables, and it was blocked by GitHub. AI suggested moving all our credentials to GitHub variables so that GitHub Actions could easily fetch them through
+`${{ secrets.DIGITALOCEAN_TOKEN }}`. This provides a much safer way to store secrets.
+- In addition, we wanted to have the full CI/CD experience, not just CI/CD on the API. We wanted GitHub Actions to be able to deploy the whole infrastructure change. After talking to AI, we realized that Terraform is one of the most common tools for provisioning cloud infrastructure. So that is also one of the reasons why we chose Terraform.
 
 The team critically evaluated AI output before using it. Some AI suggestions were useful as starting points, but others were too broad, not fully applicable to our project, or needed correction after checking the real codebase and repository history. One representative example is documented in `ai-session.md`.
 
