@@ -191,7 +191,7 @@ The system only accepts bids that are higher than the current highest bid. Selle
 
 The auction owner and the winner will recieve a system generated email notification when the auction is completed. 
 
-![Email Notification](screenshots/email_notification.PNG)
+![Email Notification](screenshots/email_notification.png)
 
 ### 8. View My Auctions
 
