@@ -1,6 +1,6 @@
 # CloudBid — Cloud-Native Auction Platform Final Report
 
-**ECE1779 Introduction to Cloud Computing | Group 2**
+**ECE1779 Introduction to Cloud Computing W2026 | Group 2**
 
 ## Team Information
 
@@ -327,7 +327,7 @@ docker-compose down -v
 
 ## Deployment Information
 
-The live version of the is available at: `http://138.197.168.189:30000/`
+The live version of the Platform is available at: `http://138.197.168.189:30000/`
 
 The application is deployed on DigitalOcean Kubernetes. The deployment includes the API service, worker service, and PostgreSQL database, with persistent storage for database state and supporting cloud infrastructure for monitoring and backup.
 
