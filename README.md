@@ -388,3 +388,11 @@ We also learned that good scope control matters. It was easy to think of more fe
 This project also gave us experience across the full stack. We worked on the API, the database, the frontend, Docker, Kubernetes, and cloud deployment. That helped us see how each part affects the others.
 
 In the end, this project helped us understand how to build a cloud application that is correct, persistent, and easier to test and explain. It showed us the value of keeping the design simple, checking our work carefully, and staying within scope.
+
+## Video Demo
+
+The final project demo video is available at the following link:
+
+[Demo video](https://youtu.be/9Q86gTZ0xZM)
+
+Direct URL: `https://youtu.be/9Q86gTZ0xZM`
