@@ -30,29 +30,7 @@ The AI also pointed out that some ideas would likely make the feature too large 
 - We chose a follower-based model after discussing internally and determining it it was feasible in the timeframe while making the feature more interesting than a simple hidden flag.
 - We verified the final design by implementing a private auction flag, a followers table, and backend access checks for auction listing, detail, bid history, and bidding routes.
 
-
-// add one more AI interactions that meaningfully influenced the project
-
-
-## Session 3: Choosing an authentication method
-
-### Prompt
-
-We are building a course project using Node.js, Express, and PostgreSQL and we need authentication for a REST API that will be used by a simple frontend. What authentication method would make the most sense for this type of project? We want something that is secure enough for the project but still realistic for us to implement in the time we have. Right now we need users to be able to register, log in, and then access endpoints like creating auctions and placing bids only after authentication. Would it make sense to use sessions, or should we use JWT? Also recommend how to store passwords safely in the database?
-
-### AI Response (trimmed summary)
-
-The AI suggested using bcrypt to hash passwords before storing them in PostgreSQL and using JWTs for login sessions and protected API routes. It described a flow where registration stores a hashed password, login verifies the password and returns a signed token, and protected routes validate the token before allowing access.
-
-### What Your Team Did With It
-
-- The useful part was the recommendation to use a simple JWT + bcrypt flow instead of a more complex authentication system.
-- We did not treat the AI suggestion as final code. We adapted it to our own backend structure and route design.
-- We verified the approach by implementing registration, login, password hashing, and token-protected routes in the API, then testing them through the frontend and local API calls.
-- We also checked that the final implementation matched the actual needs of the project instead of adding unnecessary complexity.
-
-
-## Session 4: CI/CD approach
+## Session 2: CI/CD approach
 
 ### Prompt
 
@@ -120,3 +98,20 @@ Example
             -var="create_backup_bucket=$CREATE_BACKUP_BUCKET" \
             -var="backup_bucket_name=$BACKUP_BUCKET_NAME"
 ```
+
+## Session 3: Choosing an authentication method
+
+### Prompt
+
+We are building a course project using Node.js, Express, and PostgreSQL and we need authentication for a REST API that will be used by a simple frontend. What authentication method would make the most sense for this type of project? We want something that is secure enough for the project but still realistic for us to implement in the time we have. Right now we need users to be able to register, log in, and then access endpoints like creating auctions and placing bids only after authentication. Would it make sense to use sessions, or should we use JWT? Also recommend how to store passwords safely in the database?
+
+### AI Response (trimmed summary)
+
+The AI suggested using bcrypt to hash passwords before storing them in PostgreSQL and using JWTs for login sessions and protected API routes. It described a flow where registration stores a hashed password, login verifies the password and returns a signed token, and protected routes validate the token before allowing access.
+
+### What Your Team Did With It
+
+- The useful part was the recommendation to use a simple JWT + bcrypt flow instead of a more complex authentication system.
+- We did not treat the AI suggestion as final code. We adapted it to our own backend structure and route design.
+- We verified the approach by implementing registration, login, password hashing, and token-protected routes in the API, then testing them through the frontend and local API calls.
+- We also checked that the final implementation matched the actual needs of the project instead of adding unnecessary complexity.
