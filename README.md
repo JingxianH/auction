@@ -11,9 +11,12 @@
 
 ## Motivation
 
-Our team chose to build a stateful auction platform that supports "flash-sale" style auctions. Our system allows bidders to follow sellers like famous artists; this feature can lead to spikes in traffic when a popular seller starts an auction. The problem this addresses is straightforward: many general-purpose marketplace tools are not designed for safe bidding under concurrency, which can lead to incorrect outcomes such as duplicate winners or inconsistent bid histories.
+Our team built **CloudBid**, a stateful auction platform for short, flash-sale style auctions. Our main goal was to build a system that can handle bidding correctly when many users act at the same time. We chose this project because auctions are a good example of a system where correctness matters. During a live auction, several users may place bids within seconds of each other, and the system still needs to track one valid highest bid and one correct winner. If the system does not manage state carefully, it can produce the wrong winner or an inconsistent bid history.
 
-Our target users are small merchants and independent crafters who want a simple way to run short, time-boxed auctions without relying on complex platforms. Building this project gave us the opportunity to tackle real-world challenges in data consistency, system availability, and Kubernetes-based orchestration—all directly aligned with the course objectives.
+Our system also includes a follower feature allowing users to follow sellers such as popular creators or artists. When a well-known seller starts an auction, that can cause a sudden increase in traffic and bidding activity. This made the project a good fit for studying safe bidding under concurrency and correct state handling.
+
+Our target users are small merchants, independent creators, and craft sellers who want a simple way to run short, time-boxed auctions without relying on a large or complex marketplace platform. Building this project gave us the opportunity to tackle real-world challenges in data consistency, persistent PostgreSQL storage, Kubernetes-based orchestration, monitoring, and backup and recovery in one system which are all directly aligned with the course objectives
+
 
 ## Objectives
 
@@ -189,7 +192,7 @@ The system only accepts bids that are higher than the current highest bid. Selle
 
 ### 7. Email Notifications
 
-The auction owner and the winner will recieve a system generated email notification when the auction is completed. 
+The auction owner and the winner will receive a system generated email notification when the auction is completed. 
 
 ![Email Notification](screenshots/email_notification.png)
 
