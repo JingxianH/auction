@@ -1,6 +1,6 @@
-# Cloud-Native Auction Platform — Final Report
+# CloudBid — Cloud-Native Auction Platform Final Report
 
-**ECE1779 Introduction to Cloud Computing — Group 2**
+**ECE1779 Introduction to Cloud Computing | Group 2**
 
 ## Team Information
 
@@ -19,10 +19,10 @@ Our target users are small merchants and independent crafters who want a simple 
 
 The main objective was to design and deploy a stateful cloud-native auction platform that:
 
-- Supports user registration, JWT-based authentication, and profile management. The user should be able to follow other users
+- Supports user registration, JWT-based authentication, profile management, and seller-follower relationships
 - Allows users to create, browse, edit, and cancel auctions (including private auctions visible only to followers)
-- Ensures bidding correctness under concurrent access using PostgreSQL transactions and row-level locking. 
-- Builds a backend long-running worker that monitors the life cycle of each auction, assigns winners for completed auctions, and integrates with a third-party application to send out email notifications
+- Ensures bidding correctness under concurrent access using PostgreSQL transactions and row-level locking
+- Uses a long-running background worker that monitors the life cycle of each auction, assigns winners for completed auctions, and integrates with a third-party application to send out email notifications
 - Persists all application data in PostgreSQL with durable storage. The database snapshots will be backed up in DigitalOcean Spaces and allow developers to easily recover the database
 - Deploys on DigitalOcean Kubernetes with rolling updates, health probes, and autoscaling
 - Includes operational features: CI/CD pipeline through github action and terraform, monitoring with Prometheus-style metrics, automated database backup/recovery, and email notifications
@@ -42,7 +42,7 @@ The main objective was to design and deploy a stateful cloud-native auction plat
 | **Infrastructure Provisioning** | Terraform (DigitalOcean provider) |
 | **CI/CD** | GitHub Actions |
 | **Backup Storage** | DigitalOcean Spaces (S3-compatible object storage) |
-| **Container Registry** | Dockeqr Hub |
+| **Container Registry** | Docker Hub |
 
 ### Orchestration Approach: Kubernetes
 
@@ -332,7 +332,7 @@ AI was used mainly for brainstorming, debugging assistance, verification, and wr
 
 Its most meaningful contributions were:
 
-- helping us compare feature options and keep the project scope manageable. At the beginning, we wanted to build this project with a Large Language Model with a RAG framework that could give end users recommendations with historical data. However, after brainstorming with AI, we quickly realized that it would be impossible to complete within a month for two developers. It was also not aligned with the project requirements. So we decided to drop the LLM feature, stick with basic functionality, and shift our focus to infrastructure management with Kubernetes and Docker.
+- Helping us compare feature options and keep the project scope manageable. At the beginning, we wanted to build this project with a Large Language Model with a RAG framework that could give end users recommendations with historical data. However, after brainstorming with AI, we quickly realized that it would be impossible to complete within a month for two developers. It was also not aligned with the project requirements. So we decided to drop the LLM feature, stick with basic functionality, and shift our focus to infrastructure management with Kubernetes and Docker.
 - We also used AI to generate basic boilerplate code, as it is an industry standard tool. We used AI to generate a basic CRUD API template, and we provided the implementation based on how we wanted the APIs to work.
 - We also utilized AI in our debugging process. We hit a major roadblock when we were implementing the GitHub Actions CI/CD functionality. We were hardcoding some of the credentials in Terraform variables, and it was blocked by GitHub. AI suggested moving all our credentials to GitHub variables so that GitHub Actions could easily fetch them through
 `${{ secrets.DIGITALOCEAN_TOKEN }}`. This provides a much safer way to store secrets.
