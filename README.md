@@ -188,11 +188,13 @@ Steps:
 
 The system only accepts bids that are higher than the current highest bid. Sellers cannot bid on their own auctions. Private auction bidding is limited to authorized users.
 
+If multiple bids arrive close together, the backend processes them safely so that only one correct highest bid is recorded.
+
 ![Place a Bid view](screenshots/place-bid-2.PNG)
 
 ### 7. Email Notifications
 
-The auction owner and the winner will receive a system generated email notification when the auction is completed. 
+The auction owner and the winner receive a system-generated email notification when the auction is completed. After the auction end time, a background worker updates the final auction status and sends the related notifications automatically.
 
 ![Email Notification](screenshots/email_notification.png)
 
@@ -347,9 +349,9 @@ The team critically evaluated AI output before using it. Some AI suggestions wer
 
 All AI-assisted output was reviewed by the team before being used in the project. In particular:
 
-- manual testing of the implemented features through the web interface and API
-- inspection of backend code, route behavior, and database-related logic
-- checks using logs, metrics, and deployment artifacts where appropriate
+- Manual testing of the implemented features through the web interface and API
+- Inspection of backend code, route behavior, and database-related logic
+- Checking using logs, metrics, and deployment artifacts where appropriate
 
 The final design decisions, implementation choices, and documentation remain the responsibility of the team.
 
